@@ -1,0 +1,47 @@
+.badge {
+  display: inline-flex; align-items: center; gap: 4px;
+  padding: 2px 10px; border-radius: var(--radius-full);
+  font-size: 13px; font-weight: 600; line-height: 1.6;
+  text-transform: capitalize; user-select: none; cursor: pointer;
+  transition: all var(--transition); white-space: nowrap;
+}
+.badge:hover { filter: brightness(0.95); }
+.badge-pendente { background: var(--color-warning-light); color: var(--color-warning-strong); }
+.badge-aprovado, .badge-confirmado { background: var(--color-success-light); color: #065f46; }
+.badge-rejeitado { background: var(--color-danger-light); color: var(--color-danger-strong); }
+[data-theme="dark"] .badge-aprovado,
+[data-theme="dark"] .badge-confirmado { color: #a7f3d0; }
+[data-theme="dark"] .badge-pendente { color: var(--color-warning-strong); }
+[data-theme="dark"] .badge-rejeitado { color: var(--color-danger-strong); }
+
+.badge-count {
+  display: inline-flex; align-items: center; justify-content: center;
+  min-width: 20px; height: 20px; padding: 0 6px;
+  border-radius: var(--radius-full); font-size: 11px; font-weight: 700;
+  background: var(--color-danger); color: #fff;
+  line-height: 1; font-variant-numeric: tabular-nums;
+}
+.badge-count.zero { display: none; }
+.badge:focus-visible {
+  outline: 2px solid var(--color-primary);
+  outline-offset: 2px;
+}
+
+/* Moderation confirm: smallest legible ack — 180ms scale + opacity, transform-only */
+.badge-status-updated {
+  animation: badgeConfirm 180ms var(--ease-out-expo);
+  will-change: transform, opacity;
+}
+@keyframes badgeConfirm {
+  from { opacity: 0.4; transform: scale(0.85); }
+  to { opacity: 1; transform: scale(1); }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .badge { transition: background-color 150ms ease, color 150ms ease, border-color 150ms ease; }
+  .badge-status-updated { animation: badgeConfirmReduced 150ms ease; }
+  @keyframes badgeConfirmReduced {
+    from { opacity: 0.5; }
+    to { opacity: 1; }
+  }
+}
