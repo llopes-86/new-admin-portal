@@ -1,0 +1,231 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
+  <title>Dashboard — Admin Bodas M&L</title>
+  <meta name="app-version" content="2.0.12">
+  <link rel="stylesheet" href="css/fonts.css?v=2.0.12">
+  <link rel="stylesheet" href="css/admin.css?v=2.0.12">
+  <script src="lib/xlsx/xlsx.full.min.js"></script>
+  <script src="lib/jspdf/jspdf.umd.min.js"></script>
+  <script src="lib/jspdf-autotable/jspdf.plugin.autotable.min.js"></script>
+  <link rel="manifest" href="manifest.json">
+  <meta name="theme-color" content="#0F1A2E">
+  <meta name="description" content="Portal de administração — Bodas de Esmeralda M&L">
+  <link rel="icon" type="image/png" sizes="16x16" href="images/icons/favicon-16x16.png">
+  <link rel="icon" type="image/png" sizes="32x32" href="images/icons/favicon-32x32.png">
+  <link rel="shortcut icon" href="images/icons/favicon.ico">
+  <link rel="apple-touch-icon" href="images/icons/apple-touch-icon.png">
+  <meta name="apple-mobile-web-app-capable" content="yes">
+  <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+  <meta name="apple-mobile-web-app-title" content="Admin M&L">
+</head>
+<body>
+  <!-- SIDEBAR DESKTOP -->
+  <aside class="sidebar">
+    <div class="sidebar-brand">
+      <div class="sidebar-brand-icon">
+        <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="#fff" stroke-width="2" stroke-linecap="round">
+          <path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"/>
+          <circle cx="12" cy="7" r="4"/>
+        </svg>
+      </div>
+      <h1>Admin M&L</h1>
+    </div>
+    <nav class="sidebar-nav">
+      <button class="nav-item active" data-tab="guests">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round">
+          <path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"/>
+          <circle cx="9" cy="7" r="4"/>
+          <path d="M23 21v-2a4 4 0 0 0-3-3.87"/>
+          <path d="M16 3.13a4 4 0 0 1 0 7.75"/>
+        </svg>
+        <span class="nav-item-label">Convidados</span>
+        <span id="nav-guests-count" class="badge-count zero" aria-hidden="true"></span>
+      </button>
+      <button class="nav-item" data-tab="messages">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round">
+          <path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z"/>
+        </svg>
+        <span class="nav-item-label">Mural</span>
+        <span id="nav-messages-count" class="badge-count zero" aria-hidden="true"></span>
+      </button>
+      <button id="export-btn" class="nav-item">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+          <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/>
+          <polyline points="7 10 12 15 17 10"/>
+          <line x1="12" y1="15" x2="12" y2="3"/>
+        </svg>
+        <span class="nav-item-label">Exportar</span>
+      </button>
+    </nav>
+    <div class="sidebar-footer">
+      <div class="sidebar-user">
+        <div class="sidebar-user-icon" id="user-initial"></div>
+        <span id="user-email" class="sidebar-user-email"></span>
+      </div>
+      <button id="logout-btn" class="btn btn-ghost btn-block" aria-busy="false">
+        <svg class="logout-icon" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round">
+          <path d="M9 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4"/>
+          <polyline points="16 17 21 12 16 7"/>
+          <line x1="21" y1="12" x2="9" y2="12"/>
+        </svg>
+        <span class="logout-label">Sair</span>
+        <span class="logout-spinner hidden t-icon-swap" data-state="spinner" aria-hidden="true">
+          <span class="t-icon" data-icon="spinner">
+            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+              <circle cx="12" cy="12" r="10" stroke-dasharray="31.4 31.4" stroke-linecap="round"/>
+            </svg>
+          </span>
+        </span>
+      </button>
+      <p class="sidebar-version">v<span id="app-version-dashboard"></span></p>
+    </div>
+  </aside>
+
+  <!-- BOTTOM NAV MOBILE -->
+  <nav class="bottom-nav">
+    <button class="bottom-nav-item active" data-tab="guests">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round">
+        <path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"/>
+        <circle cx="9" cy="7" r="4"/>
+        <path d="M23 21v-2a4 4 0 0 0-3-3.87"/>
+        <path d="M16 3.13a4 4 0 0 1 0 7.75"/>
+      </svg>
+      <span>Convidados</span>
+      <span id="nav-mobile-guests-count" class="badge-count zero" aria-hidden="true"></span>
+    </button>
+    <button class="bottom-nav-item" data-tab="messages">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round">
+        <path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z"/>
+      </svg>
+      <span>Mural</span>
+      <span id="nav-mobile-messages-count" class="badge-count zero" aria-hidden="true"></span>
+    </button>
+    <button id="export-btn-mobile" class="bottom-nav-item">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+        <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/>
+        <polyline points="7 10 12 15 17 10"/>
+        <line x1="12" y1="15" x2="12" y2="3"/>
+      </svg>
+      <span>Exportar</span>
+    </button>
+    <button id="logout-btn-mobile" class="bottom-nav-item bottom-nav-logout">
+      <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round">
+        <path d="M9 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4"/>
+        <polyline points="16 17 21 12 16 7"/>
+        <line x1="21" y1="12" x2="9" y2="12"/>
+      </svg>
+      <span>Sair</span>
+    </button>
+  </nav>
+
+  <!-- MAIN CONTENT -->
+  <main class="main-content" data-swipeable aria-live="polite">
+    <div class="mobile-user-bar">
+      <div class="sidebar-user-icon" id="user-initial-mobile"></div>
+      <span id="user-email-mobile"></span>
+    </div>
+    <header class="content-header">
+      <h1 id="tab-title">Lista de convidados</h1>
+      <div class="header-actions">
+        <span id="stats-guests" class="stat-row">Carregando…</span>
+        <span id="stats-messages" class="stat-row hidden">Carregando…</span>
+      </div>
+    </header>
+    <button id="theme-toggle" class="theme-toggle theme-toggle-fixed" type="button" aria-label="Alternar tema claro/escuro" aria-pressed="false" title="Alternar tema">
+      <svg class="theme-icon theme-icon-sun" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="12" cy="12" r="5"/><line x1="12" y1="1" x2="12" y2="3"/><line x1="12" y1="21" x2="12" y2="23"/><line x1="4.22" y1="4.22" x2="5.64" y2="5.64"/><line x1="18.36" y1="18.36" x2="19.78" y2="19.78"/><line x1="1" y1="12" x2="3" y2="12"/><line x1="21" y1="12" x2="23" y2="12"/><line x1="4.22" y1="19.78" x2="5.64" y2="18.36"/><line x1="18.36" y1="5.64" x2="19.78" y2="4.22"/></svg>
+      <svg class="theme-icon theme-icon-moon hidden" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M21 12.79A9 9 0 1 1 11.21 3 7 7 0 0 0 21 12.79z"/></svg>
+    </button>
+
+    <!-- ABA CONVIDADOS -->
+    <section id="tab-guests" class="tab-content active">
+      <div id="guests-approve-all" class="card approve-all-card hidden">
+        <p><span></span></p>
+        <button class="btn btn-sm btn-warning">Aprovar Todos</button>
+      </div>
+      <div class="toolbar">
+        <div class="search-wrapper">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" aria-hidden="true">
+            <circle cx="11" cy="11" r="8"/><line x1="21" y1="21" x2="16.65" y2="16.65"/>
+          </svg>
+          <label class="visually-hidden" for="guests-search">Buscar convidados</label>
+          <input type="text" id="guests-search" class="form-input search-input" placeholder="Buscar por nome, responsável ou telefone…" autocomplete="off">
+        </div>
+        <label class="visually-hidden" for="guests-filter">Filtrar por status</label>
+        <select id="guests-filter" class="form-select">
+          <option value="all">Todos</option>
+          <option value="Pendente">Pendentes</option>
+          <option value="Confirmado">Confirmados</option>
+        </select>
+        <label class="visually-hidden" for="guests-category-filter">Filtrar por categoria</label>
+        <select id="guests-category-filter" class="form-select">
+          <option value="all">Todas as categorias</option>
+          <option value="adultos">Adultos</option>
+          <option value="criancas">Crianças</option>
+          <option value="necessidades">Necessidades especiais</option>
+          <option value="veganos">Veganos</option>
+          <option value="lactose">Intolerância à lactose</option>
+        </select>
+      </div>
+      <div id="guests-paginated" class="paginated-area">
+        <!-- TABLE DESKTOP -->
+        <div class="table-wrapper">
+          <table class="data-table">
+            <thead>
+              <tr>
+                <th scope="col">#</th><th scope="col">Nome / Responsável</th><th scope="col">Tipo</th><th scope="col">Idade</th><th scope="col">Nome da criança</th><th scope="col">Restrições</th><th scope="col">Contato</th><th scope="col">Data</th><th scope="col">Status</th>
+              </tr>
+            </thead>
+            <tbody id="guests-body">
+              <tr><td colspan="9" class="empty-state"><p>Carregando…</p></td></tr>
+            </tbody>
+          </table>
+        </div>
+        <!-- CARDS MOBILE -->
+        <div class="guest-cards" id="guests-cards"></div>
+        <div class="pagination" id="guests-pagination"></div>
+      </div>
+    </section>
+
+    <!-- ABA MURAL -->
+    <section id="tab-messages" class="tab-content">
+      <div id="messages-approve-all" class="card approve-all-card hidden">
+        <p><span></span></p>
+        <button class="btn btn-sm btn-warning">Aprovar Todas</button>
+      </div>
+      <div class="toolbar">
+        <label class="visually-hidden" for="messages-filter">Filtrar mensagens por status</label>
+        <select id="messages-filter" class="form-select">
+          <option value="all">Todas</option>
+          <option value="Pendente">Pendentes</option>
+          <option value="Aprovado">Aprovadas</option>
+          <option value="Rejeitado">Rejeitadas</option>
+        </select>
+      </div>
+      <div id="messages-paginated" class="paginated-area">
+        <div class="messages-grid" id="messages-grid">
+          <div class="empty-state"><p>Carregando…</p></div>
+        </div>
+        <div class="pagination" id="messages-pagination"></div>
+      </div>
+    </section>
+  </main>
+
+  <script src="js/config.js?v=2.0.12"></script>
+  <script src="lib/pocketbase/pocketbase.umd.js"></script>
+  <script src="js/utils/auth.js?v=2.0.12"></script>
+  <script src="js/utils/dom.js"></script>
+  <script src="js/utils/toast.js"></script>
+  <script src="js/utils/sanitize.js"></script>
+  <script src="js/utils/parse.js"></script>
+  <script src="js/api/pocketbase.js"></script>
+  <script src="js/features/guests.js"></script>
+  <script src="js/features/messages.js"></script>
+  <script src="js/features/export.js"></script>
+  <script src="js/utils/theme.js?v=2.0.12"></script>
+  <script src="js/app.js?v=2.0.12"></script>
+  <script src="js/sw-register.js?v=2.0.12"></script>
+</body>
+</html>

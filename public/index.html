@@ -1,0 +1,101 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
+  <title>Admin — Bodas M&L</title>
+  <meta name="app-version" content="2.0.12">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="stylesheet" href="css/fonts.css?v=2.0.12">
+  <link rel="stylesheet" href="css/admin.css?v=2.0.12">
+  <link rel="manifest" href="manifest.json">
+  <meta name="theme-color" content="#0F1A2E">
+  <meta name="description" content="Portal de administração — Bodas de Esmeralda M&L">
+  <link rel="icon" type="image/png" sizes="16x16" href="images/icons/favicon-16x16.png">
+  <link rel="icon" type="image/png" sizes="32x32" href="images/icons/favicon-32x32.png">
+  <link rel="shortcut icon" href="images/icons/favicon.ico">
+  <link rel="apple-touch-icon" href="images/icons/apple-touch-icon.png">
+  <meta name="apple-mobile-web-app-capable" content="yes">
+  <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+  <meta name="apple-mobile-web-app-title" content="Admin M&L">
+</head>
+<body class="login-page">
+  <div class="login-container">
+    <div class="login-card">
+      <div class="login-header">
+        <div class="login-icon">
+          <img src="images/Sankofa.png" alt="Sankofa">
+        </div>
+        <h1>Portal Admin</h1>
+        <p class="login-subtitle">Bodas de Esmeralda — M&L</p>
+      </div>
+      <form id="login-form" class="login-form" method="post" autocomplete="off">
+        <div class="form-group">
+          <label class="form-label" for="email">E-mail</label>
+          <input class="form-input" type="email" id="email" name="email" required placeholder="seu@email.com">
+        </div>
+        <div class="form-group">
+          <label class="form-label" for="password">Senha</label>
+          <div class="password-wrapper">
+            <input class="form-input" type="password" id="password" name="password" required placeholder="••••••••">
+            <button type="button" class="password-toggle" id="password-toggle" aria-label="Mostrar senha" tabindex="-1">
+              <svg class="eye-icon eye-visible" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                <path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z"/>
+                <circle cx="12" cy="12" r="3"/>
+              </svg>
+              <svg class="eye-icon eye-hidden" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                <path d="M17.94 17.94A10.07 10.07 0 0 1 12 20c-7 0-11-8-11-8a18.45 18.45 0 0 1 5.06-5.94"/>
+                <path d="M9.9 4.24A9.12 9.12 0 0 1 12 4c7 0 11 8 11 8a18.5 18.5 0 0 1-2.16 3.19"/>
+                <line x1="1" y1="1" x2="23" y2="23"/>
+              </svg>
+            </button>
+          </div>
+        </div>
+        <div id="login-error" class="login-error hidden" role="alert" aria-live="polite"></div>
+        <button type="submit" id="login-btn" class="btn btn-primary btn-block btn-lg" aria-busy="false">
+          <span id="login-btn-text" class="btn-label-swap">Entrar</span>
+        </button>
+      </form>
+      <form id="change-password-form" class="login-form change-form" method="post" autocomplete="off">
+        <p class="change-info">Por segurança, crie uma nova senha para continuar. Você irá para o painel em seguida.</p>
+        <a href="#" id="back-to-login" class="back-link">← Sair e voltar ao login</a>
+        <div class="form-group">
+          <label class="form-label" for="current-password">Senha atual</label>
+          <input class="form-input" type="password" id="current-password" required placeholder="••••••••">
+        </div>
+        <div class="form-group">
+          <label class="form-label" for="new-password">Nova senha</label>
+          <input class="form-input" type="password" id="new-password" required placeholder="Crie sua nova senha" aria-describedby="new-password-hint">
+          <p class="form-hint" id="new-password-hint">Mínimo 8 caracteres. Use uma senha diferente da atual.</p>
+        </div>
+        <div class="form-group">
+          <label class="form-label" for="confirm-password">Confirmar nova senha</label>
+          <input class="form-input" type="password" id="confirm-password" required placeholder="Repita a nova senha">
+        </div>
+        <div id="change-error" class="login-error hidden" role="alert" aria-live="polite"></div>
+        <button type="submit" id="change-btn" class="btn btn-primary btn-block btn-lg" aria-busy="false">
+          <span id="change-btn-text" class="btn-label-swap">Salvar nova senha</span>
+        </button>
+      </form>
+      <p class="login-version">v<span id="app-version"></span></p>
+    </div>
+  </div>
+  <div id="login-overlay" class="login-overlay hidden" role="status" aria-live="polite" aria-label="Acessando painel">
+    <div class="login-overlay-card">
+      <div class="login-overlay-spinner">
+        <svg width="36" height="36" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+          <circle cx="12" cy="12" r="10" stroke-dasharray="31.4 31.4" stroke-linecap="round"/>
+        </svg>
+      </div>
+      <p class="login-overlay-text">Acessando painel</p>
+      <p class="login-overlay-sub">Verificando suas credenciais…</p>
+    </div>
+  </div>
+  <script src="js/config.js?v=2.0.12"></script>
+  <script src="lib/pocketbase/pocketbase.umd.js"></script>
+  <script src="js/utils/auth.js?v=2.0.12"></script>
+  <script src="js/login.js?v=2.0.12"></script>
+  <script src="js/sw-register.js?v=2.0.12"></script>
+</body>
+</html>
