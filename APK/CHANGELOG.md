@@ -5,11 +5,23 @@ pelas tags ``apk/vX.Y.Z`` deste repositório.
 
 ## 1.1.0 - 2026-10-22
 
-- Login com a identidade visual do portal web (fundo, card areia, logo Sankofa, overlay Acessando painel, versao no rodape, shake no erro)
-- Lembrar-me: e-mail e senha guardados criptografados e tela pre-preenchida
-- Swipe horizontal para paginar tambem no mural
-- Botoes Aprovar/Rejeitar/Pendente e filtros empilhados com o layout do portal
-- Indicador de pagina flutuante
+Melhorias de UX alinhadas ao portal web.
+
+### Adicionado
+- Tela de login com a identidade visual do portal: fundo `africa-day-bg.jpg`, card areia com
+  borda dourada, logo Sankofa em círculo, títulos "Portal Admin" / "Bodas de Esmeralda — M&L",
+  rótulos acima dos campos, overlay "Acessando painel", versão no rodapé e *shake* no erro.
+- **Lembrar-me**: e-mail e senha guardados criptografados (Android Keystore) e formulário
+  pré-preenchido. Botão "Limpar credenciais salvas" nos Ajustes.
+- Swipe horizontal para paginar também no Mural (antes só funcionava nos Convidados).
+- Indicador de página flutuante "3/5" (igual ao portal).
+
+### Corrigido
+- Botões Aprovar / Rejeitar / **Pendente** do Mural: agora seguem o `.btn-group` do portal
+  (cores `#10B981` / `#EF4444` / `#F59E0B`, texto branco, sem ícones, largura igual).
+- Filtros de Status e Categoria: empilhados e com largura total no celular, como o
+  `flex-direction: column` do portal; fonte 16 px e altura de toque maior.
+- Tela do Mural não paginava por swipe.
 
 
 ## 1.0.0 - 2026-10-22
