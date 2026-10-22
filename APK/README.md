@@ -152,3 +152,46 @@ O arquivo `keystore.properties` (gitignored) aponta para ele.
    `sinceId` evita repetir notificações após reconexão.
 5. O Foreground Service usa `foregroundServiceType="specialUse"` — o tipo `dataSync`
    tem limite de 6 h/dia no Android 15+.
+
+---
+
+## 8. Versionamento (SemVer + git)
+
+A **fonte da verdade é a tag `apk/vX.Y.Z`** do repositório `New-Admin-Portal`.
+O Gradle lê o git no momento do build e deriva a versão automaticamente:
+
+| Estado do git | `versionName` | `versionCode` |
+|---|---|---|
+| Tag `apk/v1.2.3` no HEAD, árvore limpa | `1.2.3` | nº de commits |
+| 4 commits à frente da tag | `1.2.3-dev4` | nº de commits |
+| Árvore com alterações locais | `1.2.3-dev4.dirty` | nº de commits |
+| Sem git (CI sem repositório) | `0.0.0-dev` | 1 |
+
+`versionCode` é o **número de commits** — monotônico e único por build, então
+instalar uma versão nova nunca falha por "versão já instalada".
+
+A versão aparece em **Ajustes → rodapé**: `Admin M&L 1.2.3 · build 42 · commit ab9dd97 · apk/v1.2.3`.
+
+### Publicar uma nova versão
+
+```powershell
+# 1. commitar o que foi feito
+git add -A; git commit -m "feat(android): ..."
+
+# 2. versionar (cria a tag apk/vX.Y.Z e registra no CHANGELOG)
+powershell -ExecutionPolicy Bypass -File tools/bump-app-version.ps1 -Version 1.1.0
+
+# 3. buildar (o Gradle já lê a tag)
+cd APK; .\build-apk.ps1
+# => dist\AdminML-1.1.0.apk
+```
+
+O script `tools/bump-app-version.ps1`:
+- valida a SemVer (3 partes, sem zeros à esquerda);
+- avisa se houver alterações não commitadas;
+- cria a tag anotada `apk/vX.Y.Z`;
+- insere a entrada no `APK/CHANGELOG.md`;
+- com `-Push`, envia a branch e a tag para o remoto.
+
+> O **configuration cache do Gradle está desligado** de propósito: a versão depende
+> do estado do git e o cache serviria uma versão antiga.

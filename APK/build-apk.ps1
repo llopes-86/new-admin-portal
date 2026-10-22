@@ -39,10 +39,25 @@ try {
     if (-not (Test-Path $out)) { throw "APK de release nao encontrado em $out" }
     $dist = "$ProjectDir\dist"
     New-Item -ItemType Directory -Force -Path $dist | Out-Null
-    $version = (Select-String -Path "$ProjectDir\app\build.gradle.kts" -Pattern 'versionName = "([^"]+)"').Matches[0].Groups[1].Value
+
+    # Versao e lida do BuildConfig gerado (vem do git: tag apk/vX.Y.Z)
+    $buildConfig = Get-ChildItem "$ProjectDir\app\build\generated" -Recurse -Filter "BuildConfig.java" |
+      Where-Object { $_.FullName -match "release" } | Select-Object -First 1
+    if (-not $buildConfig) {
+      $buildConfig = Get-ChildItem "$ProjectDir\app\build\generated" -Recurse -Filter "BuildConfig.java" | Select-Object -First 1
+    }
+    $version = "0.0.0"
+    $code = "0"
+    if ($buildConfig) {
+      $m = Select-String -Path $buildConfig.FullName -Pattern 'VERSION_NAME = "([^"]+)"'
+      if ($m) { $version = $m.Matches[0].Groups[1].Value }
+      $m2 = Select-String -Path $buildConfig.FullName -Pattern 'VERSION_CODE = (\d+)'
+      if ($m2) { $code = $m2.Matches[0].Groups[1].Value }
+    }
+
     $target = Join-Path $dist "AdminML-$version.apk"
     Copy-Item $out $target -Force
-    Write-Host "==> APK: $target ($([math]::Round((Get-Item $target).Length / 1MB, 1)) MB)" -ForegroundColor Green
+    Write-Host "==> APK: $target ($([math]::Round((Get-Item $target).Length / 1MB, 1)) MB | versionName=$version versionCode=$code)" -ForegroundColor Green
   }
 }
 finally {
