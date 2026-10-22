@@ -570,3 +570,37 @@ git add -A; git commit -m "feat(android): ..."
 powershell -ExecutionPolicy Bypass -File tools\bump-app-version.ps1 -Version 1.1.0
 cd APK; .\build-apk.ps1      # => dist\AdminML-1.1.0.apk
 ```
+
+---
+
+## 19. UX da v1.1.0 (2026-10-22) — alinhamento com o portal web
+
+Feedback do usuário no aparelho (Redmi Note 12S / Android 15) e o que foi feito:
+
+| Reclamação | Correção | Arquivo |
+|---|---|---|
+| Notificação persistente do Gotify atrapalha | **Sem mudança** (decisão do usuário — evitar Firebase) | — |
+| Mural não paginava por swipe | `Modifier.swipeToPaginate` extraído para componente compartilhado e aplicado no Mural | `ui/components/SwipeToPaginate.kt`, `ui/messages/MessagesScreen.kt` |
+| Botão "Pendente" horrível | Botões do Mural no padrão do `.btn-group` da web: sem ícones, cores `#10B981`/`#EF4444`/`#F59E0B`, texto branco, 36 dp, largura 1:1:1, quebra em telas estreitas (`FlowRow`) | `ui/messages/MessagesScreen.kt` |
+| Filtros mal dispostos | Empilhados e com largura total abaixo de 1025 dp (como o `flex-direction: column` do portal), fonte 16 sp e altura de toque maior | `ui/guests/GuestsScreen.kt`, `ui/components/FilterDropdown.kt` |
+| Tela inicial não salva usuário e senha | "Lembrar-me" (default ligado): e-mail e senha no `EncryptedSharedPreferences` (Keystore), formulário pré-preenchido, botão "Limpar credenciais salvas" nos Ajustes; logout só limpa a sessão | `core/SecureStore.kt`, `core/SessionManager.kt`, `ui/login/*`, `ui/settings/SettingsScreen.kt` |
+| Login precisa parecer com o web | Tela reconstruída: fundo `africa-day-bg.jpg`, card areia com borda dourada, logo Sankofa em círculo de 150 dp, "Portal Admin" / "Bodas de Esmeralda — M&L", labels acima dos campos, overlay "Acessando painel", versão no rodapé e *shake* no erro | `ui/login/LoginScreen.kt`, `res/drawable-nodpi/{africa_day_bg.jpg,sankofa.png}` |
+
+Bônus de paridade: **indicador de página flutuante "3/5"** (`ui/components/PageIndicator.kt`),
+igual ao `showPageIndicator` do portal.
+
+### Testes (26 no total, todos verdes)
+
+| Suite | n | Cobre |
+|---|---|---|
+| `StartupTest` | 3 | regressão do crash de abertura |
+| `ScreenCompositionTest` | 3 | Activity + composição das telas |
+| `LoginViewModelTest` | 6 | pré-preenchimento, switch "Lembrar-me", validações de login/troca de senha |
+| `SwipeToPaginateTest` | 6 | cálculo da página de destino no swipe |
+| `GotifyUrlTest` | 6 | normalização de URL |
+| `GotifyProductionSmokeTest` | 2 | contra o Gotify de produção |
+
+### Entrega
+
+`APK/dist/AdminML-1.1.0.apk` — 14 MB, `versionName=1.1.0`, `versionCode=8`, tag `apk/v1.1.0`,
+mesma chave de assinatura (instala por cima, sem desinstalar).
