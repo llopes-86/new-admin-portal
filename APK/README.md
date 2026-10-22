@@ -195,3 +195,21 @@ O script `tools/bump-app-version.ps1`:
 
 > O **configuration cache do Gradle está desligado** de propósito: a versão depende
 > do estado do git e o cache serviria uma versão antiga.
+
+---
+
+## 9. O que mudou na v1.1.0
+
+- **Login igual ao portal web**: fundo `africa-day-bg.jpg`, card areia com borda dourada,
+  logo Sankofa em círculo, títulos "Portal Admin" / "Bodas de Esmeralda — M&L", rótulos
+  acima dos campos, overlay "Acessando painel" durante o login, versão no rodapé e
+  *shake* nos campos quando o login falha.
+- **Lembrar-me** (ligado por padrão): guarda e-mail e senha criptografados (Android
+  Keystore) e abre o formulário preenchido. Para apagar: *Ajustes → Limpar credenciais
+  salvas*.
+- **Swipe para paginar no Mural** (antes só existia em Convidados).
+- **Botões Aprovar / Rejeitar / Pendente** com o layout e as cores do portal.
+- **Filtros empilhados** e com largura total no celular, como no portal.
+- **Indicador de página** "3/5" flutuante.
+
+Detalhes: `APK/CHANGELOG.md`.
