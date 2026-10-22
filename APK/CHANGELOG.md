@@ -3,6 +3,15 @@
 Todas as mudanças do app Android. O versionamento segue SemVer e é controlado
 pelas tags ``apk/vX.Y.Z`` deste repositório.
 
+## 1.1.0 - 2026-10-22
+
+- Login com a identidade visual do portal web (fundo, card areia, logo Sankofa, overlay Acessando painel, versao no rodape, shake no erro)
+- Lembrar-me: e-mail e senha guardados criptografados e tela pre-preenchida
+- Swipe horizontal para paginar tambem no mural
+- Botoes Aprovar/Rejeitar/Pendente e filtros empilhados com o layout do portal
+- Indicador de pagina flutuante
+
+
 ## 1.0.0 - 2026-10-22
 
 Primeira versão do app nativo (Kotlin/Compose) do Portal Admin das Bodas de Esmeralda M&L.
