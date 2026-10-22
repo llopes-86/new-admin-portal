@@ -1,0 +1,21 @@
+# Normalização de fim de linha
+#
+# O repositório usa core.autocrlf=true (checkout em CRLF no Windows).
+# Exceções para o app Android:
+
+# O gradlew precisa de LF para executar em Linux/macOS
+APK/gradlew text eol=lf
+
+# Scripts PowerShell e .bat ficam com CRLF (execução no Windows)
+APK/gradlew.bat text eol=crlf
+APK/*.ps1 text eol=crlf
+APK/tools/*.ps1 text eol=crlf
+tools/*.ps1 text eol=crlf
+
+# Código-fonte do app e do portal: LF no repositório
+APK/**/*.kt text eol=lf
+APK/**/*.kts text eol=lf
+APK/**/*.xml text eol=lf
+APK/**/*.toml text eol=lf
+APK/**/*.md text eol=lf
+pb_hooks/*.js text eol=lf

@@ -1,0 +1,258 @@
+package com.bodasmel.adminml.ui.messages
+
+import androidx.compose.foundation.layout.Arrangement
+import androidx.compose.foundation.layout.Box
+import androidx.compose.foundation.layout.Column
+import androidx.compose.foundation.layout.Row
+import androidx.compose.foundation.layout.Spacer
+import androidx.compose.foundation.layout.fillMaxSize
+import androidx.compose.foundation.layout.fillMaxWidth
+import androidx.compose.foundation.layout.height
+import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.lazy.LazyColumn
+import androidx.compose.foundation.lazy.items
+import androidx.compose.foundation.shape.RoundedCornerShape
+import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.filled.Check
+import androidx.compose.material.icons.filled.Close
+import androidx.compose.material.icons.filled.Undo
+import androidx.compose.material3.AlertDialog
+import androidx.compose.material3.Button
+import androidx.compose.material3.ButtonDefaults
+import androidx.compose.material3.Card
+import androidx.compose.material3.CardDefaults
+import androidx.compose.material3.CircularProgressIndicator
+import androidx.compose.material3.Icon
+import androidx.compose.material3.LinearProgressIndicator
+import androidx.compose.material3.MaterialTheme
+import androidx.compose.material3.SnackbarHost
+import androidx.compose.material3.SnackbarHostState
+import androidx.compose.material3.Text
+import androidx.compose.material3.TextButton
+import androidx.compose.runtime.Composable
+import androidx.compose.runtime.LaunchedEffect
+import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.remember
+import androidx.compose.runtime.setValue
+import androidx.compose.ui.Alignment
+import androidx.compose.ui.Modifier
+import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.text.font.FontWeight
+import androidx.compose.ui.unit.dp
+import androidx.lifecycle.compose.collectAsStateWithLifecycle
+import com.bodasmel.adminml.AppContainer
+import com.bodasmel.adminml.core.Format
+import com.bodasmel.adminml.data.MessageRecord
+import com.bodasmel.adminml.theme.PortalColors
+import com.bodasmel.adminml.theme.StatusPalette
+import com.bodasmel.adminml.ui.components.FilterDropdown
+import com.bodasmel.adminml.ui.components.PaginationBar
+import com.bodasmel.adminml.ui.components.StatusBadge
+
+private val FILTER_OPTIONS =
+  listOf(
+    "all" to "Todas",
+    MessageRecord.STATUS_PENDENTE to "Pendentes",
+    MessageRecord.STATUS_APROVADO to "Aprovadas",
+    MessageRecord.STATUS_REJEITADO to "Rejeitadas",
+  )
+
+@Composable
+fun MessagesScreen(container: AppContainer) {
+  val store = container.messagesStore
+  val state by store.state.collectAsStateWithLifecycle()
+  val snackbarHostState = remember { SnackbarHostState() }
+  val dark = MaterialTheme.colorScheme.background.let {
+    (0.299 * it.red + 0.587 * it.green + 0.114 * it.blue) < 0.5
+  }
+  var showApproveAllDialog by remember { mutableStateOf(false) }
+
+  LaunchedEffect(state.message) {
+    val message = state.message ?: return@LaunchedEffect
+    snackbarHostState.showSnackbar(message)
+    store.consumeMessage()
+  }
+
+  Box(modifier = Modifier.fillMaxSize()) {
+    Column(modifier = Modifier.fillMaxSize()) {
+      if (state.loading) LinearProgressIndicator(modifier = Modifier.fillMaxWidth())
+
+      state.error?.let {
+        Text(
+          text = it,
+          color = MaterialTheme.colorScheme.error,
+          modifier = Modifier.padding(16.dp),
+          style = MaterialTheme.typography.bodyMedium,
+        )
+      }
+
+      if (state.pendentes.isNotEmpty()) {
+        Card(
+          modifier = Modifier.fillMaxWidth().padding(16.dp, 12.dp),
+          shape = RoundedCornerShape(12.dp),
+          colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surface),
+          elevation = CardDefaults.cardElevation(defaultElevation = 1.dp),
+        ) {
+          Row(
+            modifier = Modifier.fillMaxWidth().padding(14.dp),
+            verticalAlignment = Alignment.CenterVertically,
+          ) {
+            Text(
+              text = "${state.pendentes.size} pendente${if (state.pendentes.size != 1) "s" else ""}",
+              modifier = Modifier.weight(1f),
+              style = MaterialTheme.typography.bodyMedium,
+            )
+            Button(
+              onClick = { showApproveAllDialog = true },
+              enabled = !state.busy,
+              colors = ButtonDefaults.buttonColors(containerColor = PortalColors.Gold),
+            ) {
+              if (state.busy) {
+                CircularProgressIndicator(
+                  modifier = Modifier.height(16.dp),
+                  strokeWidth = 2.dp,
+                  color = Color.White,
+                )
+              } else {
+                Text("Aprovar Todas")
+              }
+            }
+          }
+        }
+      }
+
+      FilterDropdown(
+        label = "Filtro",
+        options = FILTER_OPTIONS,
+        selected = state.filter,
+        counts = state.counts,
+        onSelect = store::onFilterChange,
+        modifier = Modifier.fillMaxWidth().padding(horizontal = 16.dp),
+      )
+
+      Spacer(Modifier.height(8.dp))
+      Text(
+        text = state.statsText,
+        style = MaterialTheme.typography.bodySmall,
+        color = MaterialTheme.colorScheme.onSurfaceVariant,
+        modifier = Modifier.padding(horizontal = 16.dp),
+      )
+      Spacer(Modifier.height(8.dp))
+
+      if (state.filtered.isEmpty() && !state.loading) {
+        Box(modifier = Modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
+          Text("Nenhuma mensagem encontrada", color = MaterialTheme.colorScheme.onSurfaceVariant)
+        }
+      } else {
+        LazyColumn(
+          modifier = Modifier.fillMaxSize(),
+          contentPadding = androidx.compose.foundation.layout.PaddingValues(16.dp),
+          verticalArrangement = Arrangement.spacedBy(10.dp),
+        ) {
+          items(state.pageItems, key = { it.id }) { message ->
+            MessageCard(
+              message = message,
+              dark = dark,
+              onApprove = { store.setStatus(message, MessageRecord.STATUS_APROVADO) },
+              onReject = { store.setStatus(message, MessageRecord.STATUS_REJEITADO) },
+              onPending = { store.setStatus(message, MessageRecord.STATUS_PENDENTE) },
+            )
+          }
+        }
+      }
+
+      PaginationBar(
+        currentPage = state.currentPage,
+        totalPages = state.totalPages,
+        onPage = store::goToPage,
+      )
+    }
+
+    SnackbarHost(hostState = snackbarHostState, modifier = Modifier.align(Alignment.BottomCenter))
+  }
+
+  if (showApproveAllDialog) {
+    AlertDialog(
+      onDismissRequest = { showApproveAllDialog = false },
+      title = { Text("Confirmar ação") },
+      text = { Text("Aprovar ${state.pendentes.size} mensagens pendentes?") },
+      confirmButton = {
+        TextButton(
+          onClick = {
+            showApproveAllDialog = false
+            store.approveAll()
+          }
+        ) { Text("Confirmar") }
+      },
+      dismissButton = { TextButton(onClick = { showApproveAllDialog = false }) { Text("Cancelar") } },
+    )
+  }
+}
+
+@Composable
+private fun MessageCard(
+  message: MessageRecord,
+  dark: Boolean,
+  onApprove: () -> Unit,
+  onReject: () -> Unit,
+  onPending: () -> Unit,
+) {
+  Card(
+    modifier = Modifier.fillMaxWidth(),
+    shape = RoundedCornerShape(12.dp),
+    colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surface),
+    elevation = CardDefaults.cardElevation(defaultElevation = 1.dp),
+  ) {
+    Column(modifier = Modifier.padding(14.dp)) {
+      Row(verticalAlignment = Alignment.CenterVertically) {
+        Text(
+          text = message.nome ?: "Anônimo",
+          modifier = Modifier.weight(1f),
+          fontWeight = FontWeight.SemiBold,
+          style = MaterialTheme.typography.bodyMedium,
+        )
+        Text(
+          text = Format.dateTime(message.created),
+          style = MaterialTheme.typography.bodySmall,
+          color = MaterialTheme.colorScheme.onSurfaceVariant,
+        )
+      }
+
+      Spacer(Modifier.height(8.dp))
+      Text(text = message.mensagem ?: "", style = MaterialTheme.typography.bodyMedium)
+
+      Spacer(Modifier.height(10.dp))
+      StatusBadge(status = message.normalizedStatus, dark = dark)
+
+      Spacer(Modifier.height(10.dp))
+      Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+        Button(
+          onClick = onApprove,
+          colors = ButtonDefaults.buttonColors(containerColor = PortalColors.SavannaGreen),
+        ) {
+          Icon(Icons.Filled.Check, contentDescription = null, modifier = Modifier.height(16.dp))
+          Spacer(Modifier.height(4.dp))
+          Text("Aprovar")
+        }
+        Button(
+          onClick = onReject,
+          colors = ButtonDefaults.buttonColors(containerColor = PortalColors.LightDanger),
+        ) {
+          Icon(Icons.Filled.Close, contentDescription = null, modifier = Modifier.height(16.dp))
+          Spacer(Modifier.height(4.dp))
+          Text("Rejeitar")
+        }
+        Button(
+          onClick = onPending,
+          colors = ButtonDefaults.buttonColors(containerColor = PortalColors.LightWarning),
+        ) {
+          Icon(Icons.Filled.Undo, contentDescription = null, modifier = Modifier.height(16.dp))
+          Spacer(Modifier.height(4.dp))
+          Text("Pendente")
+        }
+      }
+    }
+  }
+}
+
