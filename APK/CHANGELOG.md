@@ -82,4 +82,6 @@ Primeira versão do app nativo (Kotlin/Compose) do Portal Admin das Bodas de Esm
 - Crash na abertura (corrida de inicialização do `AppContainer`).
 - "unable to resolve host" ao vincular o Gotify (URL colada por cima do campo preenchido).
 
-[1.0.0]: https://github.com/bodasmel/new-admin-portal/releases/tag/apk/v1.0.0
+[1.0.0]: https://github.com/llopes-86/new-admin-portal/releases/tag/apk/v1.0.0
+[1.1.0]: https://github.com/llopes-86/new-admin-portal/releases/tag/apk/v1.1.0
+[1.2.0]: https://github.com/llopes-86/new-admin-portal/releases/tag/apk/v1.2.0
