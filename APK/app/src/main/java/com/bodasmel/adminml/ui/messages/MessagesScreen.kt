@@ -3,12 +3,15 @@ package com.bodasmel.adminml.ui.messages
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
+import androidx.compose.foundation.layout.ExperimentalLayoutApi
+import androidx.compose.foundation.layout.FlowRow
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.layout.widthIn
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.shape.RoundedCornerShape
@@ -47,8 +50,10 @@ import com.bodasmel.adminml.data.MessageRecord
 import com.bodasmel.adminml.theme.PortalColors
 import com.bodasmel.adminml.theme.StatusPalette
 import com.bodasmel.adminml.ui.components.FilterDropdown
+import com.bodasmel.adminml.ui.components.PageIndicator
 import com.bodasmel.adminml.ui.components.PaginationBar
 import com.bodasmel.adminml.ui.components.StatusBadge
+import com.bodasmel.adminml.ui.components.swipeToPaginate
 
 private val FILTER_OPTIONS =
   listOf(
@@ -58,6 +63,7 @@ private val FILTER_OPTIONS =
     MessageRecord.STATUS_REJEITADO to "Rejeitadas",
   )
 
+@OptIn(ExperimentalLayoutApi::class)
 @Composable
 fun MessagesScreen(container: AppContainer) {
   val store = container.messagesStore
@@ -122,6 +128,7 @@ fun MessagesScreen(container: AppContainer) {
         }
       }
 
+      // -------- Filtro (empilhado no celular, como na web) --------
       FilterDropdown(
         label = "Filtro",
         options = FILTER_OPTIONS,
@@ -140,26 +147,40 @@ fun MessagesScreen(container: AppContainer) {
       )
       Spacer(Modifier.height(8.dp))
 
-      if (state.filtered.isEmpty() && !state.loading) {
-        Box(modifier = Modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
-          Text("Nenhuma mensagem encontrada", color = MaterialTheme.colorScheme.onSurfaceVariant)
-        }
-      } else {
-        LazyColumn(
-          modifier = Modifier.fillMaxSize(),
-          contentPadding = androidx.compose.foundation.layout.PaddingValues(16.dp),
-          verticalArrangement = Arrangement.spacedBy(10.dp),
-        ) {
-          items(state.pageItems, key = { it.id }) { message ->
-            MessageCard(
-              message = message,
-              dark = dark,
-              onApprove = { store.setStatus(message, MessageRecord.STATUS_APROVADO) },
-              onReject = { store.setStatus(message, MessageRecord.STATUS_REJEITADO) },
-              onPending = { store.setStatus(message, MessageRecord.STATUS_PENDENTE) },
+      // -------- Lista com swipe para paginar (como na web) --------
+      Box(
+        modifier =
+          Modifier
+            .fillMaxSize()
+            .swipeToPaginate(
+              currentPage = state.currentPage,
+              totalPages = state.totalPages,
+              onPage = store::goToPage,
             )
+      ) {
+        if (state.filtered.isEmpty() && !state.loading) {
+          Box(modifier = Modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
+            Text("Nenhuma mensagem encontrada", color = MaterialTheme.colorScheme.onSurfaceVariant)
+          }
+        } else {
+          LazyColumn(
+            modifier = Modifier.fillMaxSize(),
+            contentPadding = androidx.compose.foundation.layout.PaddingValues(16.dp),
+            verticalArrangement = Arrangement.spacedBy(10.dp),
+          ) {
+            items(state.pageItems, key = { it.id }) { message ->
+              MessageCard(
+                message = message,
+                dark = dark,
+                onApprove = { store.setStatus(message, MessageRecord.STATUS_APROVADO) },
+                onReject = { store.setStatus(message, MessageRecord.STATUS_REJEITADO) },
+                onPending = { store.setStatus(message, MessageRecord.STATUS_PENDENTE) },
+              )
+            }
           }
         }
+
+        PageIndicator(currentPage = state.currentPage, totalPages = state.totalPages)
       }
 
       PaginationBar(
@@ -190,6 +211,7 @@ fun MessagesScreen(container: AppContainer) {
   }
 }
 
+@OptIn(ExperimentalLayoutApi::class)
 @Composable
 private fun MessageCard(
   message: MessageRecord,
@@ -226,33 +248,51 @@ private fun MessageCard(
       StatusBadge(status = message.normalizedStatus, dark = dark)
 
       Spacer(Modifier.height(10.dp))
-      Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
-        Button(
+
+      // Mesma disposicao da web (.btn-group com .btn-approve/.btn-reject/.btn-pending)
+      FlowRow(
+        modifier = Modifier.fillMaxWidth(),
+        horizontalArrangement = Arrangement.spacedBy(8.dp),
+        maxItemsInEachRow = 3,
+      ) {
+        ActionButton(
+          text = "Aprovar",
+          color = PortalColors.LightSuccess,
           onClick = onApprove,
-          colors = ButtonDefaults.buttonColors(containerColor = PortalColors.SavannaGreen),
-        ) {
-          Icon(Icons.Filled.Check, contentDescription = null, modifier = Modifier.height(16.dp))
-          Spacer(Modifier.height(4.dp))
-          Text("Aprovar")
-        }
-        Button(
+          modifier = Modifier.weight(1f).widthIn(min = 96.dp),
+        )
+        ActionButton(
+          text = "Rejeitar",
+          color = PortalColors.LightDanger,
           onClick = onReject,
-          colors = ButtonDefaults.buttonColors(containerColor = PortalColors.LightDanger),
-        ) {
-          Icon(Icons.Filled.Close, contentDescription = null, modifier = Modifier.height(16.dp))
-          Spacer(Modifier.height(4.dp))
-          Text("Rejeitar")
-        }
-        Button(
+          modifier = Modifier.weight(1f).widthIn(min = 96.dp),
+        )
+        ActionButton(
+          text = "Pendente",
+          color = PortalColors.LightWarning,
           onClick = onPending,
-          colors = ButtonDefaults.buttonColors(containerColor = PortalColors.LightWarning),
-        ) {
-          Icon(Icons.Filled.Undo, contentDescription = null, modifier = Modifier.height(16.dp))
-          Spacer(Modifier.height(4.dp))
-          Text("Pendente")
-        }
+          modifier = Modifier.weight(1f).widthIn(min = 96.dp),
+        )
       }
     }
   }
 }
 
+/** Botao de acao com o mesmo visual da web (cor solida, texto branco, raio 8dp). */
+@Composable
+private fun ActionButton(
+  text: String,
+  color: Color,
+  onClick: () -> Unit,
+  modifier: Modifier = Modifier,
+) {
+  Button(
+    onClick = onClick,
+    modifier = modifier.height(36.dp),
+    shape = RoundedCornerShape(8.dp),
+    colors = ButtonDefaults.buttonColors(containerColor = color, contentColor = Color.White),
+    contentPadding = androidx.compose.foundation.layout.PaddingValues(horizontal = 12.dp),
+  ) {
+    Text(text, style = MaterialTheme.typography.labelLarge, fontWeight = FontWeight.SemiBold)
+  }
+}

@@ -48,6 +48,17 @@ class SessionManager(
         AuthState.SignedOut -> null
       }
 
+  /** E-mail e senha lembrados ("Lembrar-me"). */
+  val rememberedEmail: String? get() = secureStore.rememberedEmail
+  val rememberedPassword: String? get() = secureStore.rememberedPassword
+  val rememberCredentials: Boolean get() = secureStore.rememberCredentials
+
+  /** Liga/desliga o lembrete de credenciais. */
+  fun setRememberCredentials(enabled: Boolean) {
+    secureStore.rememberCredentials = enabled
+    if (!enabled) secureStore.clearRememberedCredentials()
+  }
+
   private fun restoreSession(): AuthState {
     // Qualquer falha ao ler o storage significa "sem sessão" — nunca derruba o app.
     return runCatching {
@@ -66,11 +77,22 @@ class SessionManager(
       }
   }
 
-  suspend fun login(email: String, password: String): LoginResult =
+  suspend fun login(email: String, password: String, remember: Boolean = true): LoginResult =
     try {
       val auth = client.authWithPassword(email, password)
       secureStore.pbToken = auth.token
       secureStore.pbUserJson = json.encodeToString(UserRecord.serializer(), auth.record)
+
+      // Guarda (ou apaga) as credenciais lembradas
+      if (remember) {
+        secureStore.rememberedEmail = email.trim()
+        secureStore.rememberedPassword = password
+        secureStore.rememberCredentials = true
+      } else {
+        secureStore.clearRememberedCredentials()
+        secureStore.rememberCredentials = false
+      }
+
       if (auth.record.mustChangePassword) {
         _state.value = AuthState.NeedsPasswordChange(auth.record)
         LoginResult.NeedsPasswordChange(auth.record)
@@ -99,6 +121,11 @@ class SessionManager(
       val auth = client.authWithPassword(user.email, newPassword)
       secureStore.pbToken = auth.token
       secureStore.pbUserJson = json.encodeToString(UserRecord.serializer(), auth.record)
+      // Se estiver lembrando credenciais, guarda a senha nova.
+      if (secureStore.rememberCredentials) {
+        secureStore.rememberedEmail = user.email
+        secureStore.rememberedPassword = newPassword
+      }
       _state.value = AuthState.SignedIn(auth.record)
       ChangePasswordResult.Success(auth.record)
     } catch (err: ApiException) {

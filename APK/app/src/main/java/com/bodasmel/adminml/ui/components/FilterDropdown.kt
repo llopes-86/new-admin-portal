@@ -8,6 +8,11 @@ import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.ExposedDropdownMenuBox
 import androidx.compose.material3.ExposedDropdownMenuDefaults
 import androidx.compose.material3.MenuAnchorType
+import androidx.compose.material3.MaterialTheme
+import androidx.compose.ui.text.TextStyle
+import androidx.compose.ui.unit.dp
+import androidx.compose.ui.unit.sp
+import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material3.OutlinedTextField
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
@@ -49,6 +54,9 @@ fun FilterDropdown(
       label = { Text(label) },
       modifier = Modifier.menuAnchor(MenuAnchorType.PrimaryNotEditable).fillMaxWidth(),
       trailingIcon = { ExposedDropdownMenuDefaults.TrailingIcon(expanded = expanded) },
+      // Ergonomia de toque igual à web no mobile (16px evita auto-zoom, 44px+ de altura)
+      textStyle = MaterialTheme.typography.bodyLarge.copy(fontSize = 16.sp),
+      shape = RoundedCornerShape(6.dp),
     )
     ExposedDropdownMenu(expanded = expanded, onDismissRequest = { expanded = false }) {
       options.forEach { (value, text) ->

@@ -499,3 +499,74 @@ location /gotify/ {
 ```
 E no app use `https://portal.bodasmel.com.br/gotify` (o app preserva o caminho e
 gera o WebSocket corretamente — coberto por `GotifyUrlTest`).
+
+---
+
+## 18. Versionamento SemVer amarrado ao git (2026-10-22)
+
+### Sim, o projeto usa git
+
+O `New-Admin-Portal` é um repositório git (branch `master`, identity `Admin M&L <admin@bodasmel.com.br>`).
+Antes desta etapa o app Android **não estava versionado**; agora está, junto com os hooks.
+
+```
+2caf08c  feat(android): app nativo Admin M&L com push via Gotify (v1.0.0)
+ab9dd97  fix(tools): BOM UTF-8 nos scripts PowerShell
+cfe6367  feat(android): versionamento SemVer derivado do git (tag apk/vX.Y.Z) + docs
+55b254e  chore: baseline completo 2.0.12 (criador do projeto)
+```
+
+### Fonte da verdade: a tag `apk/vX.Y.Z`
+
+O Gradle lê o git no build (`providers.exec`, única API permitida no Gradle 9) e deriva:
+
+| Estado do git | versionName | versionCode |
+|---|---|---|
+| Tag em HEAD + árvore limpa | `1.0.0` | nº de commits |
+| N commits à frente | `1.0.0-devN` | nº de commits |
+| Árvore com alterações locais | `1.0.0-devN.dirty` | nº de commits |
+| Sem git | `0.0.0-dev` | 1 |
+
+`versionCode` = número de commits → monotônico e único por build (instalar versão
+nova nunca falha por "versão já instalada"). Também expostos em `BuildConfig`:
+`VERSION_NAME`, `VERSION_CODE`, `GIT_COMMIT`, `GIT_TAG` — exibidos em *Ajustes*.
+
+### Scripts
+
+| Script | Função |
+|---|---|
+| `tools/bump-app-version.ps1 -Version 1.1.0` | valida SemVer, avisa sobre árvore suja, cria a tag anotada `apk/vX.Y.Z`, insere entrada no `APK/CHANGELOG.md`, `-Push` envia branch+tag |
+| `APK/build-apk.ps1` | build release assinado + copia para `dist\AdminML-<versão>.apk` (lê a versão do BuildConfig gerado) |
+| `APK/diagnose-crash.ps1` | instala via adb (USB ou `-Wireless IP:PORTA`) e coleta logcat (tag `AdminML`) + buffer de crash |
+
+### Detalhes que custaram tempo (importante)
+
+1. **Gradle 9 proíbe `ProcessBuilder` em build scripts** → usar `providers.exec`.
+2. **Configuration cache desligado** (`org.gradle.configuration-cache=false`): a versão
+   depende do git, e o cache serviria uma versão antiga.
+3. **PowerShell 5.1 + UTF-8 sem BOM**: os "—" (em-dash) viram aspas curvas cp1252 e
+   o parser quebrava ("chave de fechamento ausente"). Todos os `.ps1` agora têm BOM.
+4. **`$ErrorActionPreference='Stop'` + git**: `git describe` sem tags escreve "fatal"
+   em stderr → erro fatal no PS 5.1 → o script usa `Continue` na parte de git.
+5. `.gitattributes` criado para o `gradlew` ficar com LF (funciona em Linux/macOS).
+
+### O que está (e o que não está) no repositório
+
+Versionado: `APK/` (fontes, gradle, testes, README, CHANGELOG, stack.md, scripts),
+`pb_hooks/` (os 2 hooks do PocketBase corrigidos), `tools/bump-app-version.ps1`,
+`.gitattributes`.
+
+**Fora** do repositório (no `.gitignore`): `APK/local.properties` (caminho do SDK),
+`APK/keystore.properties` (senhas), `APK/keystore`, `APK/dist/*.apk` (binários),
+`APK/app/build`, `APK/.gradle`.
+
+> A chave de release fica em `C:\Bodas\backup\adminml-keystore\adminml-release.jks`
+> (fora do repo, junto das senhas em `keystore-credentials.txt`).
+
+### Publicar uma versão (fluxo)
+
+```powershell
+git add -A; git commit -m "feat(android): ..."
+powershell -ExecutionPolicy Bypass -File tools\bump-app-version.ps1 -Version 1.1.0
+cd APK; .\build-apk.ps1      # => dist\AdminML-1.1.0.apk
+```

@@ -2,9 +2,9 @@ package com.bodasmel.adminml.ui.guests
 
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
-import androidx.compose.foundation.gestures.detectHorizontalDragGestures
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
+import androidx.compose.foundation.layout.BoxWithConstraints
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
@@ -42,7 +42,6 @@ import androidx.compose.runtime.remember
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
-import androidx.compose.ui.input.pointer.pointerInput
 import androidx.compose.ui.platform.LocalConfiguration
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
@@ -56,9 +55,10 @@ import com.bodasmel.adminml.domain.ParseUtils
 import com.bodasmel.adminml.theme.PortalColors
 import com.bodasmel.adminml.theme.StatusPalette
 import com.bodasmel.adminml.ui.components.FilterDropdown
+import com.bodasmel.adminml.ui.components.PageIndicator
 import com.bodasmel.adminml.ui.components.PaginationBar
 import com.bodasmel.adminml.ui.components.StatusBadge
-import kotlin.math.abs
+import com.bodasmel.adminml.ui.components.swipeToPaginate
 
 @Composable
 fun GuestsScreen(container: AppContainer) {
@@ -128,7 +128,7 @@ fun GuestsScreen(container: AppContainer) {
         }
       }
 
-      // -------- Toolbar --------
+      // -------- Toolbar (empilhado no celular, como na web) --------
       Column(modifier = Modifier.fillMaxWidth().padding(horizontal = 16.dp)) {
         OutlinedTextField(
           value = state.search,
@@ -138,24 +138,48 @@ fun GuestsScreen(container: AppContainer) {
           label = { Text("Buscar por nome, responsável ou telefone…") },
           leadingIcon = { Icon(Icons.Filled.Search, contentDescription = null) },
         )
-        Spacer(Modifier.height(8.dp))
-        Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
-          FilterDropdown(
-            label = "Status",
-            options = GuestFilters.STATUS_OPTIONS,
-            selected = state.statusFilter,
-            counts = state.statusCounts,
-            onSelect = store::onStatusFilterChange,
-            modifier = Modifier.weight(1f),
-          )
-          FilterDropdown(
-            label = "Categoria",
-            options = GuestFilters.CATEGORY_OPTIONS,
-            selected = state.categoryFilter,
-            counts = state.categoryCounts,
-            onSelect = store::onCategoryFilterChange,
-            modifier = Modifier.weight(1f),
-          )
+        Spacer(Modifier.height(10.dp))
+        BoxWithConstraints {
+          // A web empilha os filtros abaixo de 1025px (flex-direction: column)
+          if (maxWidth < 1025.dp) {
+            Column(verticalArrangement = Arrangement.spacedBy(10.dp)) {
+              FilterDropdown(
+                label = "Status",
+                options = GuestFilters.STATUS_OPTIONS,
+                selected = state.statusFilter,
+                counts = state.statusCounts,
+                onSelect = store::onStatusFilterChange,
+                modifier = Modifier.fillMaxWidth(),
+              )
+              FilterDropdown(
+                label = "Categoria",
+                options = GuestFilters.CATEGORY_OPTIONS,
+                selected = state.categoryFilter,
+                counts = state.categoryCounts,
+                onSelect = store::onCategoryFilterChange,
+                modifier = Modifier.fillMaxWidth(),
+              )
+            }
+          } else {
+            Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+              FilterDropdown(
+                label = "Status",
+                options = GuestFilters.STATUS_OPTIONS,
+                selected = state.statusFilter,
+                counts = state.statusCounts,
+                onSelect = store::onStatusFilterChange,
+                modifier = Modifier.weight(1f),
+              )
+              FilterDropdown(
+                label = "Categoria",
+                options = GuestFilters.CATEGORY_OPTIONS,
+                selected = state.categoryFilter,
+                counts = state.categoryCounts,
+                onSelect = store::onCategoryFilterChange,
+                modifier = Modifier.weight(1f),
+              )
+            }
+          }
         }
         Spacer(Modifier.height(8.dp))
         Text(
@@ -169,18 +193,13 @@ fun GuestsScreen(container: AppContainer) {
       // -------- Lista (swipe horizontal pagina, como no portal) --------
       Box(
         modifier =
-          Modifier.fillMaxSize().pointerInput(state.totalPages, state.currentPage) {
-            var dragTotal = 0f
-            detectHorizontalDragGestures(
-              onDragStart = { dragTotal = 0f },
-              onDragEnd = {
-                if (abs(dragTotal) > 120f) {
-                  if (dragTotal < 0) store.nextPage() else store.previousPage()
-                }
-              },
-              onHorizontalDrag = { change, amount -> dragTotal += amount; change.consume() },
+          Modifier
+            .fillMaxSize()
+            .swipeToPaginate(
+              currentPage = state.currentPage,
+              totalPages = state.totalPages,
+              onPage = store::goToPage,
             )
-          }
       ) {
         if (state.filtered.isEmpty() && !state.loading) {
           Box(modifier = Modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
@@ -201,6 +220,8 @@ fun GuestsScreen(container: AppContainer) {
             }
           }
         }
+
+        PageIndicator(currentPage = state.currentPage, totalPages = state.totalPages)
       }
 
       PaginationBar(

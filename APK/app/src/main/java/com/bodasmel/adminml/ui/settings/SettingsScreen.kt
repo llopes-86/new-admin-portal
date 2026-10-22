@@ -251,6 +251,30 @@ fun SettingsScreen(container: AppContainer, onBack: () -> Unit) {
       HorizontalDivider()
       Spacer(Modifier.height(8.dp))
       Text(
+        "Sessão",
+        style = MaterialTheme.typography.titleMedium,
+        color = MaterialTheme.colorScheme.onSurface,
+      )
+      Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+        Button(
+          onClick = {
+            container.secureStore.clearRememberedCredentials()
+            status = "Credenciais salvas apagadas deste aparelho."
+          }
+        ) { Text("Limpar credenciais salvas") }
+      }
+      if (container.secureStore.rememberedEmail != null) {
+        Text(
+          "Credenciais lembradas: ${container.secureStore.rememberedEmail}",
+          style = MaterialTheme.typography.bodySmall,
+          color = MaterialTheme.colorScheme.onSurfaceVariant,
+        )
+      }
+
+      Spacer(Modifier.height(16.dp))
+      HorizontalDivider()
+      Spacer(Modifier.height(8.dp))
+      Text(
         "Admin M&L ${BuildConfig.VERSION_NAME}",
         style = MaterialTheme.typography.bodyMedium,
         fontWeight = androidx.compose.ui.text.font.FontWeight.SemiBold,

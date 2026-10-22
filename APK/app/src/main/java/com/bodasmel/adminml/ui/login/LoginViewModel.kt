@@ -22,13 +22,24 @@ data class LoginUiState(
   val newPassword: String = "",
   val confirmPassword: String = "",
   val showPassword: Boolean = false,
+  val rememberCredentials: Boolean = true,
   val loading: Boolean = false,
   val error: String? = null,
+  /** Contador de erros — usado para animar o "shake" dos campos. */
+  val errorCount: Int = 0,
 )
 
 class LoginViewModel(private val session: SessionManager) : ViewModel() {
 
-  private val _uiState = MutableStateFlow(LoginUiState())
+  private val _uiState =
+    MutableStateFlow(
+      LoginUiState(
+        // Pré-preenche com o que ficou salvo da última vez
+        email = session.rememberedEmail.orEmpty(),
+        password = session.rememberedPassword.orEmpty(),
+        rememberCredentials = session.rememberCredentials,
+      )
+    )
   val uiState: StateFlow<LoginUiState> = _uiState.asStateFlow()
 
   init {
@@ -52,16 +63,22 @@ class LoginViewModel(private val session: SessionManager) : ViewModel() {
 
   fun togglePasswordVisibility() = _uiState.update { it.copy(showPassword = !it.showPassword) }
 
+  /** Switch "Lembrar-me". */
+  fun onRememberChange(value: Boolean) {
+    session.setRememberCredentials(value)
+    _uiState.update { it.copy(rememberCredentials = value) }
+  }
+
   fun submitLogin() {
     val state = _uiState.value
     if (state.loading) return
     if (state.email.isBlank() || state.password.isBlank()) {
-      _uiState.update { it.copy(error = "Informe e-mail e senha.") }
+      setError("Informe e-mail e senha.")
       return
     }
     _uiState.update { it.copy(loading = true, error = null) }
     viewModelScope.launch {
-      when (val result = session.login(state.email, state.password)) {
+      when (val result = session.login(state.email, state.password, state.rememberCredentials)) {
         is LoginResult.Success -> _uiState.update { it.copy(loading = false) }
         is LoginResult.NeedsPasswordChange -> {
           _uiState.update {
@@ -74,7 +91,7 @@ class LoginViewModel(private val session: SessionManager) : ViewModel() {
             )
           }
         }
-        is LoginResult.Error -> _uiState.update { it.copy(loading = false, error = result.message) }
+        is LoginResult.Error -> setError(result.message)
       }
     }
   }
@@ -84,15 +101,15 @@ class LoginViewModel(private val session: SessionManager) : ViewModel() {
     if (state.loading) return
     when {
       state.newPassword.length < 8 -> {
-        _uiState.update { it.copy(error = "A nova senha precisa ter no mínimo 8 caracteres.") }
+        setError("A nova senha precisa ter no mínimo 8 caracteres.")
         return
       }
       state.newPassword != state.confirmPassword -> {
-        _uiState.update { it.copy(error = "As novas senhas não conferem. Repita a nova senha nos dois campos.") }
+        setError("As novas senhas não conferem. Repita a nova senha nos dois campos.")
         return
       }
       state.currentPassword == state.newPassword -> {
-        _uiState.update { it.copy(error = "Crie uma senha diferente da atual.") }
+        setError("Crie uma senha diferente da atual.")
         return
       }
     }
@@ -100,12 +117,24 @@ class LoginViewModel(private val session: SessionManager) : ViewModel() {
     viewModelScope.launch {
       when (val result = session.changePassword(state.currentPassword, state.newPassword)) {
         is ChangePasswordResult.Success -> _uiState.update { it.copy(loading = false) }
-        is ChangePasswordResult.Error -> _uiState.update { it.copy(loading = false, error = result.message) }
+        is ChangePasswordResult.Error -> setError(result.message)
       }
     }
   }
 
   fun backToLogin() {
-    _uiState.update { it.copy(mode = LoginMode.LOGIN, error = null, currentPassword = "", newPassword = "", confirmPassword = "") }
+    _uiState.update {
+      it.copy(
+        mode = LoginMode.LOGIN,
+        error = null,
+        currentPassword = "",
+        newPassword = "",
+        confirmPassword = "",
+      )
+    }
+  }
+
+  private fun setError(message: String) {
+    _uiState.update { it.copy(loading = false, error = message, errorCount = it.errorCount + 1) }
   }
 }
