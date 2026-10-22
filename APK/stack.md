@@ -604,3 +604,146 @@ igual ao `showPageIndicator` do portal.
 
 `APK/dist/AdminML-1.1.0.apk` — 14 MB, `versionName=1.1.0`, `versionCode=8`, tag `apk/v1.1.0`,
 mesma chave de assinatura (instala por cima, sem desinstalar).
+
+---
+
+## 20. UX v1.1.1 — paridade visual com o portal web (2026-10-22)
+
+Feedback do usuário no aparelho: *o card de notificação está muito grande, assim como o campo
+de pesquisa* e *o estilo do login deve ser igual da versão web (cores, fontes e etc.)*.
+
+### Fontes empacotadas (antes não havia nenhuma fonte no app)
+
+| Fonte | Papel | Origem | Arquivos |
+|---|---|---|---|
+| **Inter** | `--font-sans` (todo o texto) | `public/lib/fonts/Inter-latin.woff2` + `Inter-latin-ext.woff2` (variáveis) | `res/font/inter_{regular,medium,semibold,bold}.ttf` + `inter_ext_*` (fallback) |
+| **Playfair Display** | `--font-display` (só o título do login) | woff2 do Google Fonts (o mesmo do `fonts.css`) | `res/font/playfair_display_{semibold,bold}.ttf` |
+
+Conversão feita com `fonttools` (`pip install fonttools brotli`): woff2 → TTF e
+`fonttools.varLib.instancer` para fixar os pesos 400/500/600/700 (o Compose não precisa lidar
+com fontes variáveis). São os **mesmos glifos** que o portal serve.
+
+Aplicação: `theme/Fonts.kt` (`InterFamily`, `PlayfairFamily`) + `theme/Type.kt` (a tipografia
+Material inteira passa a usar Inter, como o `body { font-family: var(--font-sans) }` da web).
+
+### Login reescrito (paridade 1:1 com `public/css/admin.css`)
+
+| Elemento | Web | App |
+|---|---|---|
+| Card | `rgba(245,230,211,0.92)`, raio 20 px (14 px no celular), `border 1px rgba(212,160,23,0.15)` | `PortalColors.LoginCardBg` + `LoginGoldBorder` |
+| Logo | círculo 160 px (100 px no celular) com `background:#fff` e `object-fit:cover` | `Box` circular branco + `ContentScale.Crop` |
+| Título | `--font-display` 26 px (20 px no celular), `#1e293b` | `PlayfairFamily` |
+| Campos | `rgba(255,255,255,0.85)`, borda `rgba(94,58,42,0.12)`, raio 10 px, foco terracota + anel | `PortalInput` (`BasicTextField` próprio) |
+| Botão | ouro `#D4A017`, raio 10 px, 48 px, 15 px/600 | idem |
+| Erro | `rgba(239,68,68,0.1)` + borda `rgba(239,68,68,0.2)`, raio 10 px | `LoginErrorBg` / `LoginErrorBorder` |
+| Versão | **dentro** do card, `margin-top:24px` | dentro do card |
+| Breakpoints | <=480 px / 481–1024 px / >1024 px | `LocalConfiguration.screenWidthDp` |
+
+### Campos compactos (toolbar)
+
+- `PortalSearchField`: 44 px, ícone de lupa de 16 px, borda de 1 px, botão de limpar
+  (o `OutlinedTextField` com label flutuante ocupava ~64 px).
+- `FilterDropdown`: 44 px, borda de 1 px e seta à direita, no lugar do `ExposedDropdownMenuBox`
+  com label flutuante (paridade com os `<select>`).
+- Ambos respeitam o tema claro/escuro (`MaterialTheme.colorScheme`).
+
+### Cards de notificação
+
+- Serviço persistente: título "Monitorando" + texto "Conectado" (antes "Conectado ao servidor
+  Gotify"), `setSilent`, `setOnlyAlertOnce`, `setLocalOnly` → card de uma linha.
+- Novo RSVP: `BigTextStyle` passa a receber só a primeira linha da mensagem (antes a mensagem
+  multilinha inteira, que abria um card alto).
+
+### Ferramenta nova: captura de tela em teste
+
+`app/src/test/java/com/bodasmel/adminml/UiScreenshotTest.kt` renderiza as telas em PNG com
+Robolectric em modo de gráficos nativos (`@GraphicsMode(NATIVE)`) e salva em
+`APK/app/build/screenshots/`. Serve para conferir a paridade com o portal sem aparelho
+(usado para comparar o login com `https://portal.bodasmel.com.br` a 393 px).
+
+> O `captureToImage()` do `createComposeRule` **não funciona** no Robolectric (timeout em
+> `forceRedraw`); a solução é desenhar a `decorView` num `Bitmap` com `Canvas`.
+
+### Testes (27 no total, todos verdes)
+
+| Suite | n |
+|---|---|
+| `StartupTest` | 3 |
+| `ScreenCompositionTest` | 3 |
+| `LoginViewModelTest` | 6 |
+| `SwipeToPaginateTest` | 6 |
+| `GotifyUrlTest` | 6 |
+| `GotifyProductionSmokeTest` | 2 |
+| `UiScreenshotTest` | 2 (login e convidados em PNG) |
+
+### Build
+
+`APK/dist/AdminML-1.1.0-dev0.dirty.apk` — 14,4 MB, mesma chave de assinatura (instala por cima
+da v1.1.0). Ainda **sem commit/tag** — a release oficial exige
+`tools/bump-app-version.ps1 -Version 1.2.0` + commit.
+---
+
+## 21. Rodada 2 de UX — card igual à web, data corrigida e página rolável (2026-10-22)
+
+Novo feedback do usuário no aparelho, com print do **portal web** como referência.
+
+### 1. Data do convidado/mural aparecia crua — causa raiz
+
+O PocketBase **v0.40** devolve os campos de data no formato SQLite:
+
+```
+2026-10-22 03:52:29.868Z      <- espaço no lugar do "T" (ISO seria "2026-10-22T03:52:29.868Z")
+```
+
+`Format.dateTime` usava `Instant.parse`, que **só** aceita o "T" → exceção → o `getOrDefault`
+devolvia o texto cru e o card mostrava `Data: 2026-10-22 03:52:29.868Z`.
+
+Correção (`core/Format.kt`): normaliza o separador e tenta, nesta ordem,
+`OffsetDateTime(ISO_DATE_TIME)` → `Instant.parse` → `LocalDateTime` (sem fuso). Teste novo
+`FormatTest` (5 casos) fixa o comportamento.
+
+> Como conferir o formato no banco:
+> `sqlite3 pb_data/data.db "select created from rsvp limit 1"` (ou `python -c "import sqlite3..."`).
+
+### 2. Card do convidado igual ao `.guest-card` do portal
+
+Estrutura do portal (`public/js/features/guests.js` + `public/css/components/cards.css`):
+
+```
+.guest-card        padding 16px, column, gap 8px
+.guest-card-header nome (rótulo em negrito + nome normal)  |  #id
+.guest-card-body   linhas (rótulo em negrito + valor), gap 4px
+.guest-card-footer border-top, padding-top 10px → "Data: ..."  |  badge clicável
+```
+
+O app põe o badge no **canto superior** do card; agora ele fica no **rodapé, ao lado da data**
+(mesma posição do portal). As linhas usam um `AnnotatedString` só (rótulo em negrito + valor) para
+a quebra de linha continuar na margem esquerda, como o `flex-wrap` do CSS.
+
+### 3. Busca e filtros passam a rolar com a lista
+
+Antes: `Column` (busca + filtros) + `Box` com `LazyColumn` (lista) → a lista rolava **por dentro**
+e a toolbar ficava parada no topo. Agora a tela inteira é um `Column` com `verticalScroll`
+(card "Aprovar Todos", busca, filtros, total e a lista), e o `swipeToPaginate` ficou só sobre a
+lista — sem brigar com o gesto vertical. Mesmo tratamento no Mural.
+
+### 4. Texto digitado no login estava cinza (regressão da rodada anterior)
+
+Na rodada 1, uma troca em lote trocou a cor do texto do `PortalInput` para
+`MaterialTheme.colorScheme.onSurface` — que no tema **escuro** é claro. Resultado: texto
+cinza-claro sobre o card areia, ilegível. O card do login é sempre claro, então a cor do texto
+agora é **fixa** (`PortalColors.LightText` = `#1E293B`). O `UiScreenshotTest` renderiza os
+campos preenchidos para blindar contra essa regressão.
+
+### Testes (32 no total, todos verdes)
+
+| Suite | n | Cobre |
+|---|---|---|
+| `StartupTest` | 3 | regressão do crash de abertura |
+| `ScreenCompositionTest` | 3 | Activity + composição das telas |
+| `LoginViewModelTest` | 6 | pré-preenchimento, switch "Lembrar-me", validações |
+| `SwipeToPaginateTest` | 6 | cálculo da página de destino no swipe |
+| `GotifyUrlTest` | 6 | normalização de URL |
+| `GotifyProductionSmokeTest` | 2 | contra o Gotify de produção |
+| `FormatTest` | 5 | **novo** — formatos de data do PocketBase/ISO |
+| `UiScreenshotTest` | 4 | **novo** — PNGs de login, convidados, card e campos |

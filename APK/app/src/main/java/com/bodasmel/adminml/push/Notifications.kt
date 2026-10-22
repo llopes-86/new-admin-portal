@@ -50,7 +50,7 @@ object Notifications {
     manager.createNotificationChannel(service)
   }
 
-  /** Notificação persistente do Foreground Service. */
+  /** Notificação persistente do Foreground Service (card compacto, uma linha). */
   fun buildServiceNotification(context: Context, connected: Boolean): Notification {
     val contentIntent =
       PendingIntent.getActivity(
@@ -64,19 +64,23 @@ object Notifications {
 
     return NotificationCompat.Builder(context, CHANNEL_SERVICE)
       .setSmallIcon(R.drawable.ic_stat_rsvp)
-      .setContentTitle("Monitorando confirmações")
-      .setContentText(if (connected) "Conectado ao servidor Gotify" else "Conectando ao servidor Gotify…")
+      .setContentTitle("Monitorando")
+      .setContentText(if (connected) "Conectado" else "Conectando…")
       .setPriority(NotificationCompat.PRIORITY_MIN)
       .setOngoing(true)
       .setShowWhen(false)
+      .setSilent(true)
+      .setOnlyAlertOnce(true)
+      .setLocalOnly(true)
       .setContentIntent(contentIntent)
       .build()
   }
 
-  /** Notificação de novo RSVP. */
+  /** Notificação de novo RSVP (card compacto: uma linha, sem expansão). */
   fun showRsvpNotification(context: Context, message: GotifyMessage) {
     val title = message.title.ifBlank { "Novo RSVP" }
-    val body = message.message.lineSequence().firstOrNull()?.trim().orEmpty().ifBlank { "Novo RSVP recebido." }
+    val body =
+      message.message.lineSequence().firstOrNull()?.trim().orEmpty().ifBlank { "Novo RSVP recebido." }
 
     val contentIntent =
       PendingIntent.getActivity(
@@ -94,7 +98,7 @@ object Notifications {
         .setSmallIcon(R.drawable.ic_stat_rsvp)
         .setContentTitle(title)
         .setContentText(body)
-        .setStyle(NotificationCompat.BigTextStyle().bigText(message.message))
+        .setStyle(NotificationCompat.BigTextStyle().bigText(body))
         .setPriority(NotificationCompat.PRIORITY_HIGH)
         .setCategory(NotificationCompat.CATEGORY_EVENT)
         .setAutoCancel(true)

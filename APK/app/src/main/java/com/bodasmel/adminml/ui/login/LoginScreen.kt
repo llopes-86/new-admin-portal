@@ -12,6 +12,7 @@ import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
+import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxSize
@@ -21,6 +22,7 @@ import androidx.compose.foundation.layout.offset
 import androidx.compose.foundation.layout.imePadding
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
+import androidx.compose.foundation.layout.widthIn
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
@@ -32,13 +34,10 @@ import androidx.compose.material.icons.filled.VisibilityOff
 import androidx.compose.material3.Button
 import androidx.compose.material3.ButtonDefaults
 import androidx.compose.material3.Checkbox
+import androidx.compose.material3.CheckboxDefaults
 import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.Icon
-import androidx.compose.material3.IconButton
-import androidx.compose.material3.MaterialTheme
-import androidx.compose.material3.OutlinedTextField
 import androidx.compose.material3.Text
-import androidx.compose.material3.TextButton
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
@@ -48,14 +47,19 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.draw.shadow
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.graphics.graphicsLayer
 import androidx.compose.ui.layout.ContentScale
+import androidx.compose.ui.platform.LocalConfiguration
 import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.input.ImeAction
 import androidx.compose.ui.text.input.KeyboardType
 import androidx.compose.ui.text.input.PasswordVisualTransformation
 import androidx.compose.ui.text.input.VisualTransformation
+import androidx.compose.ui.text.style.TextAlign
+import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.IntOffset
+import androidx.compose.ui.unit.TextUnit
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
@@ -63,12 +67,18 @@ import androidx.lifecycle.viewmodel.compose.viewModel
 import com.bodasmel.adminml.BuildConfig
 import com.bodasmel.adminml.R
 import com.bodasmel.adminml.core.SessionManager
+import com.bodasmel.adminml.theme.InterFamily
+import com.bodasmel.adminml.theme.PlayfairFamily
 import com.bodasmel.adminml.theme.PortalColors
+import com.bodasmel.adminml.ui.components.PortalInput
 import kotlin.math.roundToInt
 
 /**
- * Tela de login com a identidade visual do portal web
- * (referência: public/index.html + public/css/admin.css).
+ * Tela de login com paridade visual com o portal web.
+ *
+ * Referência: `public/index.html` + `public/css/admin.css` (bloco "LOGIN PAGE")
+ * e `public/css/components/forms.css`. Os mesmos breakpoints da web são
+ * respeitados: <=480px (celular), 481–1024px (tablet) e >1024px (desktop).
  */
 @Composable
 fun LoginScreen(
@@ -79,12 +89,49 @@ fun LoginScreen(
   val state by viewModel.uiState.collectAsStateWithLifecycle()
   val shake = rememberShake(state.errorCount)
 
+  val widthDp = LocalConfiguration.current.screenWidthDp
+  val compact = widthDp <= 480
+  val medium = widthDp in 481..1024
+
+  val cardPadH = when {
+    compact -> 20.dp
+    medium -> 24.dp
+    else -> 40.dp
+  }
+  val cardPadV = when {
+    compact -> 28.dp
+    medium -> 32.dp
+    else -> 40.dp
+  }
+  val cardRadius = if (compact) 14.dp else 20.dp
+  val logoSize = if (compact) 100.dp else 160.dp
+  val logoGap = if (compact) 14.dp else 18.dp
+  val titleSize = if (compact) 20.sp else 26.sp
+  val headerGap = when {
+    compact -> 24.dp
+    medium -> 28.dp
+    else -> 32.dp
+  }
+  val formGap = if (compact) 16.dp else 20.dp
+  val outerPad = if (compact) 12.dp else 20.dp
+
   Box(modifier = modifier.fillMaxSize()) {
-    // Fundo: mesmo tecido do portal web
+    // Fundo: mesmo tecido do portal web (`.login-page`)
     Image(
       painter = painterResource(R.drawable.africa_day_bg),
       contentDescription = null,
-      modifier = Modifier.fillMaxSize(),
+      modifier =
+        Modifier
+          .fillMaxSize()
+          // `background-position: 30% center` no breakpoint de 480px da web
+          .graphicsLayer {
+            if (compact) {
+              // equivale ao `background-position: 30% center` da web no celular
+              scaleX = 1.25f
+              scaleY = 1.25f
+              translationX = -size.width * 0.10f
+            }
+          },
       contentScale = ContentScale.Crop,
     )
 
@@ -94,18 +141,36 @@ fun LoginScreen(
           .fillMaxSize()
           .verticalScroll(rememberScrollState())
           .imePadding()
-          .padding(horizontal = 20.dp, vertical = 24.dp),
+          .padding(horizontal = outerPad, vertical = 20.dp),
       horizontalAlignment = Alignment.CenterHorizontally,
       verticalArrangement = Arrangement.Center,
     ) {
-      LoginCard { LoginContent(state = state, viewModel = viewModel, shake = shake) }
+      LoginCard(
+        cardRadius = cardRadius,
+        cardPadH = cardPadH,
+        cardPadV = cardPadV,
+      ) {
+        LoginContent(
+          state = state,
+          viewModel = viewModel,
+          shake = shake,
+          logoSize = logoSize,
+          logoGap = logoGap,
+          titleSize = titleSize,
+          headerGap = headerGap,
+          formGap = formGap,
+        )
 
-      Spacer(Modifier.height(24.dp))
-      Text(
-        text = "v${BuildConfig.VERSION_NAME}",
-        style = MaterialTheme.typography.bodySmall,
-        color = PortalColors.Brown,
-      )
+        // `.login-version` — rodapé dentro do card (como na web)
+        Spacer(Modifier.height(24.dp))
+        Text(
+          text = "v${BuildConfig.VERSION_NAME}",
+          fontFamily = InterFamily,
+          fontSize = 12.sp,
+          color = PortalColors.Brown.copy(alpha = 0.75f),
+          letterSpacing = 0.4.sp,
+        )
+      }
     }
 
     // Overlay "Acessando painel" (igual ao .login-overlay da web)
@@ -116,17 +181,22 @@ fun LoginScreen(
       modifier = Modifier.fillMaxSize(),
     ) {
       Box(
-        modifier = Modifier.fillMaxSize().background(PortalColors.NightBlue.copy(alpha = 0.55f)),
+        modifier =
+          Modifier
+            .fillMaxSize()
+            .background(PortalColors.NightBlue.copy(alpha = 0.55f))
+            .clickable(enabled = false, onClick = {}),
         contentAlignment = Alignment.Center,
       ) {
         Column(
           modifier =
             Modifier
-              .padding(32.dp)
+              .widthIn(max = 300.dp)
+              .padding(horizontal = 28.dp, vertical = 32.dp)
               .clip(RoundedCornerShape(16.dp))
-              .background(PortalColors.Sand.copy(alpha = 0.98f))
-              .border(1.dp, PortalColors.Gold.copy(alpha = 0.15f), RoundedCornerShape(16.dp))
-              .padding(horizontal = 28.dp, vertical = 32.dp),
+              .background(PortalColors.LoginOverlayCardBg)
+              .border(1.dp, PortalColors.LoginGoldBorder, RoundedCornerShape(16.dp))
+              .shadow(24.dp, RoundedCornerShape(16.dp), clip = false),
           horizontalAlignment = Alignment.CenterHorizontally,
         ) {
           CircularProgressIndicator(
@@ -136,15 +206,17 @@ fun LoginScreen(
           )
           Spacer(Modifier.height(14.dp))
           Text(
-            "Acessando painel",
-            style = MaterialTheme.typography.titleSmall,
-            color = PortalColors.LightText,
+            text = "Acessando painel",
+            fontFamily = InterFamily,
+            fontSize = 15.sp,
             fontWeight = FontWeight.SemiBold,
+            color = PortalColors.LightText,
           )
           Text(
-            "Verificando suas credenciais…",
-            style = MaterialTheme.typography.bodySmall,
-            color = PortalColors.Brown,
+            text = "Verificando suas credenciais…",
+            fontFamily = InterFamily,
+            fontSize = 13.sp,
+            color = PortalColors.Brown.copy(alpha = 0.85f),
           )
         }
       }
@@ -154,16 +226,21 @@ fun LoginScreen(
 
 /** Card de login (mesmo papel do .login-card da web). */
 @Composable
-private fun LoginCard(content: @Composable () -> Unit) {
+private fun LoginCard(
+  cardRadius: Dp,
+  cardPadH: Dp,
+  cardPadV: Dp,
+  content: @Composable () -> Unit,
+) {
   Column(
     modifier =
       Modifier
-        .fillMaxWidth()
-        .shadow(24.dp, RoundedCornerShape(20.dp), clip = false)
-        .clip(RoundedCornerShape(20.dp))
-        .background(PortalColors.Sand.copy(alpha = 0.96f))
-        .border(1.dp, PortalColors.Gold.copy(alpha = 0.15f), RoundedCornerShape(20.dp))
-        .padding(horizontal = 28.dp, vertical = 32.dp),
+        .widthIn(max = 400.dp)
+        .shadow(24.dp, RoundedCornerShape(cardRadius), clip = false)
+        .clip(RoundedCornerShape(cardRadius))
+        .background(PortalColors.LoginCardBg)
+        .border(1.dp, PortalColors.LoginGoldBorder, RoundedCornerShape(cardRadius))
+        .padding(horizontal = cardPadH, vertical = cardPadV),
     horizontalAlignment = Alignment.CenterHorizontally,
     content = { content() },
   )
@@ -174,67 +251,76 @@ private fun LoginContent(
   state: LoginUiState,
   viewModel: LoginViewModel,
   shake: Float,
+  logoSize: Dp,
+  logoGap: Dp,
+  titleSize: TextUnit,
+  headerGap: Dp,
+  formGap: Dp,
 ) {
-  // Cabeçalho: Sankofa + títulos
-  Image(
-    painter = painterResource(R.drawable.sankofa),
-    contentDescription = "Sankofa",
-    modifier = Modifier.size(150.dp).clip(CircleShape),
-  )
-  Spacer(Modifier.height(16.dp))
+  // Cabeçalho: Sankofa em círculo branco + títulos (`.login-header`)
+  Box(
+    modifier =
+      Modifier
+        .size(logoSize)
+        .clip(CircleShape)
+        .background(Color.White),
+    contentAlignment = Alignment.Center,
+  ) {
+    Image(
+      painter = painterResource(R.drawable.sankofa),
+      contentDescription = "Sankofa",
+      contentScale = ContentScale.Crop,
+      modifier = Modifier.fillMaxSize(),
+    )
+  }
+  Spacer(Modifier.height(logoGap))
   Text(
     text = "Portal Admin",
-    fontSize = 26.sp,
+    fontFamily = PlayfairFamily,
+    fontSize = titleSize,
     fontWeight = FontWeight.Bold,
     color = PortalColors.LightText,
+    letterSpacing = (-0.3).sp,
   )
   Text(
     text = "Bodas de Esmeralda — M&L",
+    fontFamily = InterFamily,
     fontSize = 14.sp,
     fontWeight = FontWeight.Medium,
     color = PortalColors.Brown,
+    modifier = Modifier.padding(top = 4.dp),
   )
 
-  Spacer(Modifier.height(28.dp))
+  Spacer(Modifier.height(headerGap))
 
   if (state.mode == LoginMode.LOGIN) {
     // E-mail
     FieldLabel("E-mail")
-    OutlinedTextField(
+    PortalInput(
       value = state.email,
       onValueChange = viewModel::onEmailChange,
+      placeholder = "seu@email.com",
       modifier = Modifier.fillMaxWidth().offset { IntOffset(shake.roundToInt(), 0) },
-      placeholder = { Text("seu@email.com") },
-      singleLine = true,
-      shape = RoundedCornerShape(6.dp),
-      keyboardOptions =
-        KeyboardOptions(keyboardType = KeyboardType.Email, imeAction = ImeAction.Next),
+      keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Email, imeAction = ImeAction.Next),
     )
 
-    Spacer(Modifier.height(14.dp))
+    Spacer(Modifier.height(formGap))
 
     // Senha
     FieldLabel("Senha")
-    OutlinedTextField(
+    PortalInput(
       value = state.password,
       onValueChange = viewModel::onPasswordChange,
+      placeholder = "••••••••",
       modifier = Modifier.fillMaxWidth().offset { IntOffset(shake.roundToInt(), 0) },
-      placeholder = { Text("••••••••") },
-      singleLine = true,
-      shape = RoundedCornerShape(6.dp),
       visualTransformation =
         if (state.showPassword) VisualTransformation.None else PasswordVisualTransformation(),
-      keyboardOptions =
-        KeyboardOptions(keyboardType = KeyboardType.Password, imeAction = ImeAction.Done),
-      trailingIcon = {
-        IconButton(onClick = viewModel::togglePasswordVisibility) {
-          Icon(
-            imageVector =
-              if (state.showPassword) Icons.Filled.VisibilityOff else Icons.Filled.Visibility,
-            contentDescription = if (state.showPassword) "Ocultar senha" else "Mostrar senha",
-            tint = PortalColors.LightTextMuted,
-          )
-        }
+      keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Password, imeAction = ImeAction.Done),
+      trailing = {
+        PasswordToggle(
+          visible = state.showPassword,
+          onClick = viewModel::togglePasswordVisibility,
+        )
       },
     )
 
@@ -248,121 +334,151 @@ private fun LoginContent(
       Checkbox(
         checked = state.rememberCredentials,
         onCheckedChange = viewModel::onRememberChange,
+        colors =
+          CheckboxDefaults.colors(
+            checkedColor = PortalColors.Gold,
+            uncheckedColor = PortalColors.Brown,
+            checkmarkColor = Color.White,
+          ),
       )
       Text(
         "Lembrar-me",
-        style = MaterialTheme.typography.bodySmall,
-        color = PortalColors.LightText,
+        fontFamily = InterFamily,
+        fontSize = 13.sp,
+        color = PortalColors.Brown,
       )
     }
 
     state.error?.let { LoginError(it) }
 
-    Spacer(Modifier.height(14.dp))
+    Spacer(Modifier.height(formGap))
 
-    Button(
+    PortalPrimaryButton(
+      text = "Entrar",
       onClick = viewModel::submitLogin,
       enabled = !state.loading,
-      modifier = Modifier.fillMaxWidth().height(48.dp),
-      shape = RoundedCornerShape(8.dp),
-      colors = ButtonDefaults.buttonColors(containerColor = PortalColors.LightPrimary),
-    ) {
-      Text("Entrar", fontWeight = FontWeight.SemiBold)
-    }
+    )
   } else {
     // Troca de senha
     Text(
-      "Por segurança, crie uma nova senha para continuar. Você irá para o painel em seguida.",
-      style = MaterialTheme.typography.bodySmall,
+      text = "Por segurança, crie uma nova senha para continuar. Você irá para o painel em seguida.",
+      fontFamily = InterFamily,
+      fontSize = 14.sp,
       color = PortalColors.Brown,
+      textAlign = TextAlign.Center,
     )
-    Spacer(Modifier.height(10.dp))
-    Row(
-      modifier = Modifier.fillMaxWidth(),
-      horizontalArrangement = Arrangement.Start,
-    ) {
-      TextButton(onClick = viewModel::backToLogin) {
-        Text("← Sair e voltar ao login", color = PortalColors.LightPrimary)
-      }
+    Spacer(Modifier.height(4.dp))
+    Row(modifier = Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.Center) {
+      Text(
+        text = "← Sair e voltar ao login",
+        fontFamily = InterFamily,
+        fontSize = 13.sp,
+        color = PortalColors.Gold,
+        modifier = Modifier.clickable { viewModel.backToLogin() },
+      )
     }
 
-    Spacer(Modifier.height(12.dp))
+    Spacer(Modifier.height(formGap))
 
     FieldLabel("Senha atual")
-    OutlinedTextField(
+    PortalInput(
       value = state.currentPassword,
       onValueChange = viewModel::onCurrentPasswordChange,
+      placeholder = "••••••••",
       modifier = Modifier.fillMaxWidth(),
-      placeholder = { Text("••••••••") },
-      singleLine = true,
-      shape = RoundedCornerShape(6.dp),
       visualTransformation = PasswordVisualTransformation(),
-      keyboardOptions =
-        KeyboardOptions(keyboardType = KeyboardType.Password, imeAction = ImeAction.Next),
+      keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Password, imeAction = ImeAction.Next),
     )
 
-    Spacer(Modifier.height(14.dp))
+    Spacer(Modifier.height(formGap))
 
     FieldLabel("Nova senha")
-    OutlinedTextField(
+    PortalInput(
       value = state.newPassword,
       onValueChange = viewModel::onNewPasswordChange,
+      placeholder = "Crie sua nova senha",
       modifier = Modifier.fillMaxWidth(),
-      placeholder = { Text("Crie sua nova senha") },
-      singleLine = true,
-      shape = RoundedCornerShape(6.dp),
       visualTransformation = PasswordVisualTransformation(),
-      keyboardOptions =
-        KeyboardOptions(keyboardType = KeyboardType.Password, imeAction = ImeAction.Next),
+      keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Password, imeAction = ImeAction.Next),
     )
     Text(
-      "Mínimo 8 caracteres. Use uma senha diferente da atual.",
-      style = MaterialTheme.typography.bodySmall,
-      color = PortalColors.LightTextMuted,
+      text = "Mínimo 8 caracteres. Use uma senha diferente da atual.",
+      fontFamily = InterFamily,
+      fontSize = 12.sp,
+      color = PortalColors.Brown.copy(alpha = 0.9f),
+      modifier = Modifier.padding(top = 6.dp),
     )
 
-    Spacer(Modifier.height(14.dp))
+    Spacer(Modifier.height(formGap))
 
     FieldLabel("Confirmar nova senha")
-    OutlinedTextField(
+    PortalInput(
       value = state.confirmPassword,
       onValueChange = viewModel::onConfirmPasswordChange,
+      placeholder = "Repita a nova senha",
       modifier = Modifier.fillMaxWidth(),
-      placeholder = { Text("Repita a nova senha") },
-      singleLine = true,
-      shape = RoundedCornerShape(6.dp),
       visualTransformation = PasswordVisualTransformation(),
-      keyboardOptions =
-        KeyboardOptions(keyboardType = KeyboardType.Password, imeAction = ImeAction.Done),
+      keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Password, imeAction = ImeAction.Done),
     )
 
     state.error?.let { LoginError(it) }
 
-    Spacer(Modifier.height(14.dp))
+    Spacer(Modifier.height(formGap))
 
-    Button(
+    PortalPrimaryButton(
+      text = "Salvar nova senha",
       onClick = viewModel::submitChangePassword,
       enabled = !state.loading,
-      modifier = Modifier.fillMaxWidth().height(48.dp),
-      shape = RoundedCornerShape(8.dp),
-      colors = ButtonDefaults.buttonColors(containerColor = PortalColors.LightPrimary),
-    ) {
-      Text("Salvar nova senha", fontWeight = FontWeight.SemiBold)
-    }
+    )
   }
 }
 
+/** Rótulo de campo (`.login-page .form-label`): 13px, 600, marrom. */
 @Composable
 private fun FieldLabel(text: String) {
   Text(
     text = text,
     modifier = Modifier.fillMaxWidth().padding(bottom = 6.dp),
+    fontFamily = InterFamily,
     fontSize = 13.sp,
     fontWeight = FontWeight.SemiBold,
-    color = PortalColors.LightText,
+    color = PortalColors.Brown,
   )
 }
 
+/** Botão principal (`.login-page .btn-primary`): ouro, raio 10px, 48px de altura. */
+@Composable
+private fun PortalPrimaryButton(text: String, onClick: () -> Unit, enabled: Boolean) {
+  Button(
+    onClick = onClick,
+    enabled = enabled,
+    modifier = Modifier.fillMaxWidth().height(48.dp),
+    shape = RoundedCornerShape(10.dp),
+    colors =
+      ButtonDefaults.buttonColors(
+        containerColor = PortalColors.Gold,
+        contentColor = Color.White,
+        disabledContainerColor = PortalColors.Gold.copy(alpha = 0.5f),
+        disabledContentColor = Color.White,
+      ),
+    contentPadding = PaddingValues(horizontal = 20.dp, vertical = 12.dp),
+  ) {
+    Text(text, fontFamily = InterFamily, fontSize = 15.sp, fontWeight = FontWeight.SemiBold)
+  }
+}
+
+/** Botão do olho (`.password-toggle`): 18px, cor #6b5d52. */
+@Composable
+private fun PasswordToggle(visible: Boolean, onClick: () -> Unit) {
+  Icon(
+    imageVector = if (visible) Icons.Filled.VisibilityOff else Icons.Filled.Visibility,
+    contentDescription = if (visible) "Ocultar senha" else "Mostrar senha",
+    tint = PortalColors.LoginPlaceholder,
+    modifier = Modifier.size(32.dp).clickable(onClick = onClick).padding(7.dp),
+  )
+}
+
+/** Caixa de erro (`.login-error`). */
 @Composable
 private fun LoginError(message: String) {
   Spacer(Modifier.height(10.dp))
@@ -372,9 +488,10 @@ private fun LoginError(message: String) {
       Modifier
         .fillMaxWidth()
         .clip(RoundedCornerShape(10.dp))
-        .background(Color(0x1FEF4444))
-        .border(1.dp, Color(0x33EF4444), RoundedCornerShape(10.dp))
+        .background(PortalColors.LoginErrorBg)
+        .border(1.dp, PortalColors.LoginErrorBorder, RoundedCornerShape(10.dp))
         .padding(horizontal = 14.dp, vertical = 10.dp),
+    fontFamily = InterFamily,
     fontSize = 13.sp,
     color = Color(0xFFDC2626),
   )

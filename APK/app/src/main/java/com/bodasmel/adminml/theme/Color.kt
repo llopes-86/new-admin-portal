@@ -49,6 +49,17 @@ object PortalColors {
   val DarkTextMuted = Color(0xFF64748B)
   val DarkBorder = Color(0xFF334155)
 
+  // Login (paridade com as regras .login-* do portal web)
+  val LoginCardBg = Color(0xEAF5E6D3) // rgba(245,230,211,0.92)
+  val LoginOverlayCardBg = Color(0xFAF5E6D3) // rgba(245,230,211,0.98)
+  val LoginGoldBorder = Color(0x26D4A017) // rgba(212,160,23,0.15)
+  val LoginInputBg = Color(0xD9FFFFFF) // rgba(255,255,255,0.85)
+  val LoginInputBorder = Color(0x1F5E3A2A) // rgba(94,58,42,0.12)
+  val LoginFocusRing = Color(0x26B85C38) // rgba(184,92,56,0.15)
+  val LoginPlaceholder = Color(0xFF6B5D52)
+  val LoginErrorBg = Color(0x1AEF4444) // rgba(239,68,68,0.1)
+  val LoginErrorBorder = Color(0x33EF4444) // rgba(239,68,68,0.2)
+
   // Marca
   val NightBlue = Color(0xFF0F1A2E)
   val Sand = Color(0xFFF5E6D3)

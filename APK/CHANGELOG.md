@@ -3,6 +3,43 @@
 Todas as mudanças do app Android. O versionamento segue SemVer e é controlado
 pelas tags ``apk/vX.Y.Z`` deste repositório.
 
+## 1.2.0 - 2026-10-22
+
+UX do app alinhada ao portal web: login com as fontes e cores do site, card de
+convidado igual ao da web (badge de status ao lado da data), data no formato correto,
+busca e filtros rolando com a lista e cards de notificação compactos.
+
+### Adicionado
+- Fontes do portal empacotadas no app: **Inter** (`--font-sans`, texto de toda a interface) e
+  **Playfair Display** (`--font-display`, título "Portal Admin"), geradas a partir dos mesmos
+  woff2 servidos pelo site (subconjuntos latin e latin-ext, pesos 400/500/600/700).
+- Ferramenta de conferência visual: teste `UiScreenshotTest` renderiza as telas do app em PNG
+  (`APK/app/build/screenshots/`) para comparação lado a lado com o portal.
+
+### Corrigido
+- Login reconstruído com a paridade da web: card areia translúcido com borda dourada, logo
+  Sankofa recortada em círculo branco, título em Playfair, campos com borda terracota e anel de
+  foco, botão dourado, overlay "Acessando painel" e versão **dentro** do card. Os breakpoints da
+  web (<=480 px, 481–1024 px, >1024 px) são respeitados.
+- **Texto digitado no login legível**: a cor do texto passou a ser sempre escura (`#1E293B`),
+  independente do tema claro/escuro do app — antes seguia o tema e ficava cinza-claro sobre o
+  card areia.
+- **Data do convidado e do mural**: o PocketBase v0.40 devolve as datas no formato SQLite
+  ("2026-10-22 03:52:29.868Z", com espaço) e o app caía no `catch` do `Instant.parse`, mostrando
+  a data crua. Agora aceita os formatos com e sem "T" e com deslocamento de fuso.
+- **Badge de status ao lado da data**: o card do convidado ficou igual ao `.guest-card` do portal
+  (cabeçalho com nome e #id, corpo com os dados, rodapé com "Data" e o badge clicável), em vez do
+  badge no canto superior.
+- **Busca e filtros não ficam fixos no topo**: a tela de convidados e a do mural agora rolam
+  inteiras (a busca, os filtros e o total saem de vista ao deslizar), como no portal web.
+- Campo de pesquisa da lista de convidados: 44 px de altura (antes era um `OutlinedTextField`
+  com label flutuante, ~64 px), com ícone de lupa e botão de limpar — igual ao `.search-input`.
+- Filtros de Status e Categoria: 44 px, borda de 1 px e seta à direita, no lugar do campo
+  Material com label flutuante (paridade com os `<select>` do portal).
+- Cards de notificação: o card do serviço persistente ("Monitorando") e o aviso de novo RSVP
+  passaram a ocupar uma única linha, sem texto longo nem expansão.
+
+
 ## 1.1.0 - 2026-10-22
 
 Melhorias de UX alinhadas ao portal web.

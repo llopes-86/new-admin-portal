@@ -12,20 +12,15 @@ import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.widthIn
-import androidx.compose.foundation.lazy.LazyColumn
-import androidx.compose.foundation.lazy.items
+import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.RoundedCornerShape
-import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.filled.Check
-import androidx.compose.material.icons.filled.Close
-import androidx.compose.material.icons.filled.Undo
+import androidx.compose.foundation.verticalScroll
 import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.Button
 import androidx.compose.material3.ButtonDefaults
 import androidx.compose.material3.Card
 import androidx.compose.material3.CardDefaults
 import androidx.compose.material3.CircularProgressIndicator
-import androidx.compose.material3.Icon
 import androidx.compose.material3.LinearProgressIndicator
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.SnackbarHost
@@ -43,10 +38,12 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
+import androidx.compose.ui.unit.sp
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import com.bodasmel.adminml.AppContainer
 import com.bodasmel.adminml.core.Format
 import com.bodasmel.adminml.data.MessageRecord
+import com.bodasmel.adminml.theme.InterFamily
 import com.bodasmel.adminml.theme.PortalColors
 import com.bodasmel.adminml.theme.StatusPalette
 import com.bodasmel.adminml.ui.components.FilterDropdown
@@ -93,91 +90,101 @@ fun MessagesScreen(container: AppContainer) {
         )
       }
 
-      if (state.pendentes.isNotEmpty()) {
-        Card(
-          modifier = Modifier.fillMaxWidth().padding(16.dp, 12.dp),
-          shape = RoundedCornerShape(12.dp),
-          colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surface),
-          elevation = CardDefaults.cardElevation(defaultElevation = 1.dp),
-        ) {
-          Row(
-            modifier = Modifier.fillMaxWidth().padding(14.dp),
-            verticalAlignment = Alignment.CenterVertically,
-          ) {
-            Text(
-              text = "${state.pendentes.size} pendente${if (state.pendentes.size != 1) "s" else ""}",
-              modifier = Modifier.weight(1f),
-              style = MaterialTheme.typography.bodyMedium,
-            )
-            Button(
-              onClick = { showApproveAllDialog = true },
-              enabled = !state.busy,
-              colors = ButtonDefaults.buttonColors(containerColor = PortalColors.Gold),
+      // ===== Conteúdo que rola junto com a lista (como no portal web) =====
+      Box(modifier = Modifier.weight(1f).fillMaxWidth()) {
+        Column(modifier = Modifier.fillMaxSize().verticalScroll(rememberScrollState())) {
+          if (state.pendentes.isNotEmpty()) {
+            Card(
+              modifier = Modifier.fillMaxWidth().padding(16.dp, 12.dp),
+              shape = RoundedCornerShape(12.dp),
+              colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surface),
+              elevation = CardDefaults.cardElevation(defaultElevation = 1.dp),
             ) {
-              if (state.busy) {
-                CircularProgressIndicator(
-                  modifier = Modifier.height(16.dp),
-                  strokeWidth = 2.dp,
-                  color = Color.White,
+              Row(
+                modifier = Modifier.fillMaxWidth().padding(14.dp),
+                verticalAlignment = Alignment.CenterVertically,
+              ) {
+                Text(
+                  text = "${state.pendentes.size} pendente${if (state.pendentes.size != 1) "s" else ""}",
+                  modifier = Modifier.weight(1f),
+                  style = MaterialTheme.typography.bodyMedium,
                 )
-              } else {
-                Text("Aprovar Todas")
+                Button(
+                  onClick = { showApproveAllDialog = true },
+                  enabled = !state.busy,
+                  colors = ButtonDefaults.buttonColors(containerColor = PortalColors.Gold),
+                ) {
+                  if (state.busy) {
+                    CircularProgressIndicator(
+                      modifier = Modifier.height(16.dp).widthIn(max = 16.dp),
+                      strokeWidth = 2.dp,
+                      color = Color.White,
+                    )
+                  } else {
+                    Text("Aprovar Todas")
+                  }
+                }
               }
             }
           }
-        }
-      }
 
-      // -------- Filtro (empilhado no celular, como na web) --------
-      FilterDropdown(
-        label = "Filtro",
-        options = FILTER_OPTIONS,
-        selected = state.filter,
-        counts = state.counts,
-        onSelect = store::onFilterChange,
-        modifier = Modifier.fillMaxWidth().padding(horizontal = 16.dp),
-      )
+          // -------- Filtro (rola junto com a lista, como na web) --------
+          FilterDropdown(
+            label = "Filtro",
+            options = FILTER_OPTIONS,
+            selected = state.filter,
+            counts = state.counts,
+            onSelect = store::onFilterChange,
+            modifier = Modifier.fillMaxWidth().padding(horizontal = 16.dp),
+          )
 
-      Spacer(Modifier.height(8.dp))
-      Text(
-        text = state.statsText,
-        style = MaterialTheme.typography.bodySmall,
-        color = MaterialTheme.colorScheme.onSurfaceVariant,
-        modifier = Modifier.padding(horizontal = 16.dp),
-      )
-      Spacer(Modifier.height(8.dp))
+          Spacer(Modifier.height(8.dp))
+          Text(
+            text = state.statsText,
+            fontFamily = InterFamily,
+            fontSize = 13.sp,
+            color = MaterialTheme.colorScheme.onSurfaceVariant,
+            modifier = Modifier.padding(horizontal = 16.dp),
+          )
+          Spacer(Modifier.height(12.dp))
 
-      // -------- Lista com swipe para paginar (como na web) --------
-      Box(
-        modifier =
-          Modifier
-            .fillMaxSize()
-            .swipeToPaginate(
-              currentPage = state.currentPage,
-              totalPages = state.totalPages,
-              onPage = store::goToPage,
-            )
-      ) {
-        if (state.filtered.isEmpty() && !state.loading) {
-          Box(modifier = Modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
-            Text("Nenhuma mensagem encontrada", color = MaterialTheme.colorScheme.onSurfaceVariant)
-          }
-        } else {
-          LazyColumn(
-            modifier = Modifier.fillMaxSize(),
-            contentPadding = androidx.compose.foundation.layout.PaddingValues(16.dp),
-            verticalArrangement = Arrangement.spacedBy(10.dp),
+          // -------- Lista com swipe para paginar (como na web) --------
+          Box(
+            modifier =
+              Modifier
+                .fillMaxWidth()
+                .swipeToPaginate(
+                  currentPage = state.currentPage,
+                  totalPages = state.totalPages,
+                  onPage = store::goToPage,
+                )
           ) {
-            items(state.pageItems, key = { it.id }) { message ->
-              MessageCard(
-                message = message,
-                dark = dark,
-                onApprove = { store.setStatus(message, MessageRecord.STATUS_APROVADO) },
-                onReject = { store.setStatus(message, MessageRecord.STATUS_REJEITADO) },
-                onPending = { store.setStatus(message, MessageRecord.STATUS_PENDENTE) },
-              )
+            if (state.filtered.isEmpty() && !state.loading) {
+              Box(
+                modifier = Modifier.fillMaxWidth().padding(vertical = 48.dp),
+                contentAlignment = Alignment.Center,
+              ) {
+                Text("Nenhuma mensagem encontrada", color = MaterialTheme.colorScheme.onSurfaceVariant)
+              }
+            } else {
+              Column(
+                modifier = Modifier.fillMaxWidth().padding(horizontal = 16.dp),
+                verticalArrangement = Arrangement.spacedBy(10.dp),
+              ) {
+                state.pageItems.forEach { message ->
+                  MessageCard(
+                    message = message,
+                    dark = dark,
+                    onApprove = { store.setStatus(message, MessageRecord.STATUS_APROVADO) },
+                    onReject = { store.setStatus(message, MessageRecord.STATUS_REJEITADO) },
+                    onPending = { store.setStatus(message, MessageRecord.STATUS_PENDENTE) },
+                  )
+                }
+              }
             }
           }
+
+          Spacer(Modifier.height(16.dp))
         }
 
         PageIndicator(currentPage = state.currentPage, totalPages = state.totalPages)
@@ -226,28 +233,32 @@ private fun MessageCard(
     colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surface),
     elevation = CardDefaults.cardElevation(defaultElevation = 1.dp),
   ) {
-    Column(modifier = Modifier.padding(14.dp)) {
+    Column(modifier = Modifier.padding(16.dp), verticalArrangement = Arrangement.spacedBy(8.dp)) {
       Row(verticalAlignment = Alignment.CenterVertically) {
         Text(
           text = message.nome ?: "Anônimo",
           modifier = Modifier.weight(1f),
+          fontFamily = InterFamily,
+          fontSize = 13.sp,
           fontWeight = FontWeight.SemiBold,
-          style = MaterialTheme.typography.bodyMedium,
+          color = MaterialTheme.colorScheme.onSurface,
         )
         Text(
           text = Format.dateTime(message.created),
-          style = MaterialTheme.typography.bodySmall,
+          fontFamily = InterFamily,
+          fontSize = 12.sp,
           color = MaterialTheme.colorScheme.onSurfaceVariant,
         )
       }
 
-      Spacer(Modifier.height(8.dp))
-      Text(text = message.mensagem ?: "", style = MaterialTheme.typography.bodyMedium)
+      Text(
+        text = message.mensagem ?: "",
+        fontFamily = InterFamily,
+        fontSize = 14.sp,
+        color = MaterialTheme.colorScheme.onSurface,
+      )
 
-      Spacer(Modifier.height(10.dp))
       StatusBadge(status = message.normalizedStatus, dark = dark)
-
-      Spacer(Modifier.height(10.dp))
 
       // Mesma disposicao da web (.btn-group com .btn-approve/.btn-reject/.btn-pending)
       FlowRow(

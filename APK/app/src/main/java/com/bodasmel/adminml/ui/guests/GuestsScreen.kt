@@ -1,11 +1,11 @@
 package com.bodasmel.adminml.ui.guests
 
 import androidx.compose.foundation.background
-import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.BoxWithConstraints
 import androidx.compose.foundation.layout.Column
+import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxSize
@@ -13,22 +13,18 @@ import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.width
-import androidx.compose.foundation.lazy.LazyColumn
-import androidx.compose.foundation.lazy.items
+import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.RoundedCornerShape
-import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.filled.Check
-import androidx.compose.material.icons.filled.Search
+import androidx.compose.foundation.verticalScroll
 import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.Button
 import androidx.compose.material3.ButtonDefaults
 import androidx.compose.material3.Card
 import androidx.compose.material3.CardDefaults
 import androidx.compose.material3.CircularProgressIndicator
-import androidx.compose.material3.Icon
+import androidx.compose.material3.HorizontalDivider
 import androidx.compose.material3.LinearProgressIndicator
 import androidx.compose.material3.MaterialTheme
-import androidx.compose.material3.OutlinedTextField
 import androidx.compose.material3.SnackbarHost
 import androidx.compose.material3.SnackbarHostState
 import androidx.compose.material3.Text
@@ -37,13 +33,17 @@ import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
-import androidx.compose.runtime.setValue
 import androidx.compose.runtime.remember
+import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.platform.LocalConfiguration
+import androidx.compose.ui.text.AnnotatedString
+import androidx.compose.ui.text.SpanStyle
+import androidx.compose.ui.text.buildAnnotatedString
 import androidx.compose.ui.text.font.FontWeight
+import androidx.compose.ui.text.withStyle
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
@@ -52,11 +52,13 @@ import com.bodasmel.adminml.core.Format
 import com.bodasmel.adminml.data.RsvpRecord
 import com.bodasmel.adminml.domain.GuestFilters
 import com.bodasmel.adminml.domain.ParseUtils
+import com.bodasmel.adminml.theme.InterFamily
 import com.bodasmel.adminml.theme.PortalColors
 import com.bodasmel.adminml.theme.StatusPalette
 import com.bodasmel.adminml.ui.components.FilterDropdown
 import com.bodasmel.adminml.ui.components.PageIndicator
 import com.bodasmel.adminml.ui.components.PaginationBar
+import com.bodasmel.adminml.ui.components.PortalSearchField
 import com.bodasmel.adminml.ui.components.StatusBadge
 import com.bodasmel.adminml.ui.components.swipeToPaginate
 
@@ -91,134 +93,142 @@ fun GuestsScreen(container: AppContainer) {
         )
       }
 
-      // -------- Aprovar Todos --------
-      if (state.pendentes.isNotEmpty()) {
-        Card(
-          modifier = Modifier.fillMaxWidth().padding(16.dp, 12.dp),
-          shape = RoundedCornerShape(12.dp),
-          colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surface),
-          elevation = CardDefaults.cardElevation(defaultElevation = 1.dp),
+      // ===== Conteúdo que rola junto com a lista (como no portal web) =====
+      Box(modifier = Modifier.weight(1f).fillMaxWidth()) {
+        Column(
+          modifier = Modifier.fillMaxSize().verticalScroll(rememberScrollState()),
         ) {
-          Row(
-            modifier = Modifier.fillMaxWidth().padding(14.dp),
-            verticalAlignment = Alignment.CenterVertically,
-          ) {
-            Text(
-              text =
-                "${state.pendentes.size} pendente${if (state.pendentes.size != 1) "s" else ""}",
-              modifier = Modifier.weight(1f),
-              style = MaterialTheme.typography.bodyMedium,
-            )
-            Button(
-              onClick = { showApproveAllDialog = true },
-              enabled = !state.busy,
-              colors = ButtonDefaults.buttonColors(containerColor = PortalColors.Gold),
+          // -------- Aprovar Todos --------
+          if (state.pendentes.isNotEmpty()) {
+            Card(
+              modifier = Modifier.fillMaxWidth().padding(16.dp, 12.dp),
+              shape = RoundedCornerShape(12.dp),
+              colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surface),
+              elevation = CardDefaults.cardElevation(defaultElevation = 1.dp),
             ) {
-              if (state.busy) {
-                CircularProgressIndicator(
-                  modifier = Modifier.width(16.dp).height(16.dp),
-                  strokeWidth = 2.dp,
-                  color = Color.White,
+              Row(
+                modifier = Modifier.fillMaxWidth().padding(14.dp),
+                verticalAlignment = Alignment.CenterVertically,
+              ) {
+                Text(
+                  text =
+                    "${state.pendentes.size} pendente${if (state.pendentes.size != 1) "s" else ""}",
+                  modifier = Modifier.weight(1f),
+                  style = MaterialTheme.typography.bodyMedium,
                 )
-              } else {
-                Text("Aprovar Todos")
+                Button(
+                  onClick = { showApproveAllDialog = true },
+                  enabled = !state.busy,
+                  colors = ButtonDefaults.buttonColors(containerColor = PortalColors.Gold),
+                ) {
+                  if (state.busy) {
+                    CircularProgressIndicator(
+                      modifier = Modifier.width(16.dp).height(16.dp),
+                      strokeWidth = 2.dp,
+                      color = Color.White,
+                    )
+                  } else {
+                    Text("Aprovar Todos")
+                  }
+                }
               }
             }
           }
-        }
-      }
 
-      // -------- Toolbar (empilhado no celular, como na web) --------
-      Column(modifier = Modifier.fillMaxWidth().padding(horizontal = 16.dp)) {
-        OutlinedTextField(
-          value = state.search,
-          onValueChange = store::onSearchChange,
-          modifier = Modifier.fillMaxWidth(),
-          singleLine = true,
-          label = { Text("Buscar por nome, responsável ou telefone…") },
-          leadingIcon = { Icon(Icons.Filled.Search, contentDescription = null) },
-        )
-        Spacer(Modifier.height(10.dp))
-        BoxWithConstraints {
-          // A web empilha os filtros abaixo de 1025px (flex-direction: column)
-          if (maxWidth < 1025.dp) {
-            Column(verticalArrangement = Arrangement.spacedBy(10.dp)) {
-              FilterDropdown(
-                label = "Status",
-                options = GuestFilters.STATUS_OPTIONS,
-                selected = state.statusFilter,
-                counts = state.statusCounts,
-                onSelect = store::onStatusFilterChange,
-                modifier = Modifier.fillMaxWidth(),
-              )
-              FilterDropdown(
-                label = "Categoria",
-                options = GuestFilters.CATEGORY_OPTIONS,
-                selected = state.categoryFilter,
-                counts = state.categoryCounts,
-                onSelect = store::onCategoryFilterChange,
-                modifier = Modifier.fillMaxWidth(),
-              )
-            }
-          } else {
-            Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
-              FilterDropdown(
-                label = "Status",
-                options = GuestFilters.STATUS_OPTIONS,
-                selected = state.statusFilter,
-                counts = state.statusCounts,
-                onSelect = store::onStatusFilterChange,
-                modifier = Modifier.weight(1f),
-              )
-              FilterDropdown(
-                label = "Categoria",
-                options = GuestFilters.CATEGORY_OPTIONS,
-                selected = state.categoryFilter,
-                counts = state.categoryCounts,
-                onSelect = store::onCategoryFilterChange,
-                modifier = Modifier.weight(1f),
-              )
-            }
-          }
-        }
-        Spacer(Modifier.height(8.dp))
-        Text(
-          text = state.statsText,
-          style = MaterialTheme.typography.bodySmall,
-          color = MaterialTheme.colorScheme.onSurfaceVariant,
-        )
-        Spacer(Modifier.height(8.dp))
-      }
-
-      // -------- Lista (swipe horizontal pagina, como no portal) --------
-      Box(
-        modifier =
-          Modifier
-            .fillMaxSize()
-            .swipeToPaginate(
-              currentPage = state.currentPage,
-              totalPages = state.totalPages,
-              onPage = store::goToPage,
+          // -------- Busca + filtros (empilhados no celular, como na web) --------
+          Column(modifier = Modifier.fillMaxWidth().padding(horizontal = 16.dp)) {
+            PortalSearchField(
+              value = state.search,
+              onValueChange = store::onSearchChange,
+              placeholder = "Buscar por nome, responsável ou telefone…",
+              modifier = Modifier.fillMaxWidth(),
             )
-      ) {
-        if (state.filtered.isEmpty() && !state.loading) {
-          Box(modifier = Modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
-            Text("Nenhum convidado encontrado", color = MaterialTheme.colorScheme.onSurfaceVariant)
+            Spacer(Modifier.height(10.dp))
+            BoxWithConstraints {
+              // A web empilha os filtros abaixo de 1025px (flex-direction: column)
+              if (maxWidth < 1025.dp) {
+                Column(verticalArrangement = Arrangement.spacedBy(10.dp)) {
+                  FilterDropdown(
+                    label = "Status",
+                    options = GuestFilters.STATUS_OPTIONS,
+                    selected = state.statusFilter,
+                    counts = state.statusCounts,
+                    onSelect = store::onStatusFilterChange,
+                    modifier = Modifier.fillMaxWidth(),
+                  )
+                  FilterDropdown(
+                    label = "Categoria",
+                    options = GuestFilters.CATEGORY_OPTIONS,
+                    selected = state.categoryFilter,
+                    counts = state.categoryCounts,
+                    onSelect = store::onCategoryFilterChange,
+                    modifier = Modifier.fillMaxWidth(),
+                  )
+                }
+              } else {
+                Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+                  FilterDropdown(
+                    label = "Status",
+                    options = GuestFilters.STATUS_OPTIONS,
+                    selected = state.statusFilter,
+                    counts = state.statusCounts,
+                    onSelect = store::onStatusFilterChange,
+                    modifier = Modifier.weight(1f),
+                  )
+                  FilterDropdown(
+                    label = "Categoria",
+                    options = GuestFilters.CATEGORY_OPTIONS,
+                    selected = state.categoryFilter,
+                    counts = state.categoryCounts,
+                    onSelect = store::onCategoryFilterChange,
+                    modifier = Modifier.weight(1f),
+                  )
+                }
+              }
+            }
+            Spacer(Modifier.height(8.dp))
+            Text(
+              text = state.statsText,
+              fontFamily = InterFamily,
+              fontSize = 13.sp,
+              color = MaterialTheme.colorScheme.onSurfaceVariant,
+            )
+            Spacer(Modifier.height(12.dp))
           }
-        } else {
-          if (isWide) {
-            GuestsTable(state.pageItems, dark) { store.toggleStatus(it) }
-          } else {
-            LazyColumn(
-              modifier = Modifier.fillMaxSize(),
-              contentPadding = androidx.compose.foundation.layout.PaddingValues(16.dp),
-              verticalArrangement = Arrangement.spacedBy(10.dp),
-            ) {
-              items(state.pageItems, key = { it.id }) { item ->
-                GuestCard(item = item, dark = dark, onToggle = { store.toggleStatus(item) })
+
+          // -------- Lista (swipe horizontal pagina, como no portal) --------
+          Box(
+            modifier =
+              Modifier
+                .fillMaxWidth()
+                .swipeToPaginate(
+                  currentPage = state.currentPage,
+                  totalPages = state.totalPages,
+                  onPage = store::goToPage,
+                )
+          ) {
+            if (state.filtered.isEmpty() && !state.loading) {
+              Box(
+                modifier = Modifier.fillMaxWidth().padding(vertical = 48.dp),
+                contentAlignment = Alignment.Center,
+              ) {
+                Text("Nenhum convidado encontrado", color = MaterialTheme.colorScheme.onSurfaceVariant)
+              }
+            } else if (isWide) {
+              GuestsTable(state.pageItems, dark) { store.toggleStatus(it) }
+            } else {
+              Column(
+                modifier = Modifier.fillMaxWidth().padding(horizontal = 16.dp),
+                verticalArrangement = Arrangement.spacedBy(10.dp),
+              ) {
+                state.pageItems.forEach { item ->
+                  GuestCard(item = item, dark = dark, onToggle = { store.toggleStatus(item) })
+                }
               }
             }
           }
+
+          Spacer(Modifier.height(16.dp))
         }
 
         PageIndicator(currentPage = state.currentPage, totalPages = state.totalPages)
@@ -252,13 +262,30 @@ fun GuestsScreen(container: AppContainer) {
   }
 }
 
+/**
+ * Card do convidado — paridade com `.guest-card` do portal web:
+ * cabeçalho (nome + #id), corpo (linhas de dados) e rodapé (Data + badge clicável).
+ */
 @Composable
-private fun GuestCard(item: RsvpRecord, dark: Boolean, onToggle: () -> Unit) {
+internal fun GuestCard(item: RsvpRecord, dark: Boolean, onToggle: () -> Unit) {
   val restricoes = ParseUtils.parseRestricoes(item.restricoes)
   val hasNecessidades = ParseUtils.hasNecessidades(restricoes)
   val outras = ParseUtils.outrasRestricoes(restricoes)
   val isCrianca = item.criancas == "1"
   val isAdulto = item.adulto == "1"
+
+  val title: AnnotatedString =
+    buildAnnotatedString {
+      if (isCrianca && !item.responsavel.isNullOrBlank()) {
+        withStyle(SpanStyle(fontWeight = FontWeight.SemiBold)) { append("Nome do responsável: ") }
+        append(item.responsavel)
+      } else if (isAdulto) {
+        withStyle(SpanStyle(fontWeight = FontWeight.SemiBold)) { append("Nome do convidado(a): ") }
+        append(item.nome ?: "-")
+      } else {
+        append(item.nome ?: "-")
+      }
+    }
 
   Card(
     modifier = Modifier.fillMaxWidth(),
@@ -266,82 +293,94 @@ private fun GuestCard(item: RsvpRecord, dark: Boolean, onToggle: () -> Unit) {
     colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surface),
     elevation = CardDefaults.cardElevation(defaultElevation = 1.dp),
   ) {
-    Column(modifier = Modifier.padding(14.dp)) {
-      Row(verticalAlignment = Alignment.CenterVertically) {
-        Column(modifier = Modifier.weight(1f)) {
-          if (isCrianca && !item.responsavel.isNullOrBlank()) {
-            Text(
-              text = "Nome do responsável: ${item.responsavel}",
-              fontWeight = FontWeight.Bold,
-              style = MaterialTheme.typography.bodyMedium,
-            )
-          } else if (isAdulto) {
-            Text(
-              text = "Nome do convidado(a): ${item.nome ?: "-"}",
-              fontWeight = FontWeight.Bold,
-              style = MaterialTheme.typography.bodyMedium,
-            )
-          } else {
-            Text(
-              text = item.nome ?: "-",
-              fontWeight = FontWeight.Bold,
-              style = MaterialTheme.typography.bodyMedium,
-            )
-          }
-          Text(
-            text = "#${item.sheetRowId?.toInt() ?: "-"}",
-            style = MaterialTheme.typography.bodySmall,
-            color = MaterialTheme.colorScheme.onSurfaceVariant,
-          )
-        }
-        StatusBadge(status = item.normalizedStatus, dark = dark, onClick = onToggle)
-      }
-
-      Spacer(Modifier.height(8.dp))
-
-      if (isCrianca && !item.nomeCrianca.isNullOrBlank()) {
-        GuestRow("Nome da criança / adolescente:", item.nomeCrianca)
-      }
-      if (!item.idade.isNullOrBlank()) GuestRow("Idade:", item.idade)
-      if (isAdulto) GuestRow("Adulto", "")
-      if (!item.contato.isNullOrBlank()) GuestRow("Contato:", item.contato)
-      if (outras.isNotEmpty()) GuestRow("Restrições:", outras.joinToString(", "))
-      if (hasNecessidades) {
+    Column(
+      modifier = Modifier.padding(16.dp),
+      verticalArrangement = Arrangement.spacedBy(8.dp),
+    ) {
+      // ---- cabeçalho ----
+      Row(verticalAlignment = Alignment.Top) {
         Text(
-          text = "Necessidades Especiais: Sim",
-          style = MaterialTheme.typography.bodySmall,
-          color = StatusPalette.dangerFg(dark),
-          fontWeight = FontWeight.SemiBold,
+          text = title,
+          modifier = Modifier.weight(1f),
+          fontFamily = InterFamily,
+          fontSize = 13.sp,
+          color = MaterialTheme.colorScheme.onSurface,
+        )
+        Text(
+          text = "#${item.sheetRowId?.toInt() ?: "-"}",
+          fontFamily = InterFamily,
+          fontSize = 12.sp,
+          color = MaterialTheme.colorScheme.onSurfaceVariant,
         )
       }
 
-      Spacer(Modifier.height(8.dp))
-      Text(
-        text = "Data: ${Format.dateTime(item.created)}",
-        style = MaterialTheme.typography.bodySmall,
-        color = MaterialTheme.colorScheme.onSurfaceVariant,
-      )
+      // ---- corpo ----
+      Column(verticalArrangement = Arrangement.spacedBy(4.dp)) {
+        if (isCrianca && !item.nomeCrianca.isNullOrBlank()) {
+          GuestRow("Nome da criança / adolescente:", item.nomeCrianca)
+        }
+        if (!item.idade.isNullOrBlank()) GuestRow("Idade:", item.idade)
+        if (isAdulto) GuestRow("Adulto", "")
+        if (!item.contato.isNullOrBlank()) GuestRow("Contato:", item.contato)
+        if (outras.isNotEmpty()) GuestRow("Restrições:", outras.joinToString(", "))
+        if (hasNecessidades) {
+          Text(
+            text = "Necessidades Especiais: Sim",
+            fontFamily = InterFamily,
+            fontSize = 13.sp,
+            color = StatusPalette.dangerFg(dark),
+            fontWeight = FontWeight.SemiBold,
+          )
+        }
+      }
+
+      // ---- rodapé: Data + badge de status (clicável) ----
+      HorizontalDivider(color = MaterialTheme.colorScheme.outlineVariant)
+      Row(
+        modifier = Modifier.fillMaxWidth().padding(top = 10.dp),
+        verticalAlignment = Alignment.CenterVertically,
+      ) {
+        Text(
+          text = "Data: ${Format.dateTime(item.created)}",
+          modifier = Modifier.weight(1f),
+          fontFamily = InterFamily,
+          fontSize = 13.sp,
+          color = MaterialTheme.colorScheme.onSurfaceVariant,
+        )
+        StatusBadge(status = item.normalizedStatus, dark = dark, onClick = onToggle)
+      }
     }
   }
 }
 
 @Composable
 private fun GuestRow(label: String, value: String) {
-  Row(modifier = Modifier.padding(vertical = 1.dp)) {
-    Text(
-      text = label,
-      style = MaterialTheme.typography.bodySmall,
-      fontWeight = FontWeight.SemiBold,
-    )
-    if (value.isNotEmpty()) {
-      Text(text = " $value", style = MaterialTheme.typography.bodySmall)
+  // Texto único (rótulo em negrito + valor) para a quebra de linha continuar
+  // na margem esquerda, como o `flex-wrap` do `.guest-card-row` do portal.
+  val text =
+    buildAnnotatedString {
+      withStyle(
+        SpanStyle(
+          fontWeight = FontWeight.SemiBold,
+          color = MaterialTheme.colorScheme.onSurface,
+        )
+      ) { append(label) }
+      if (value.isNotEmpty()) {
+        append(" ")
+        withStyle(SpanStyle(color = MaterialTheme.colorScheme.onSurfaceVariant)) { append(value) }
+      }
     }
-  }
+
+  Text(
+    text = text,
+    fontFamily = InterFamily,
+    fontSize = 13.sp,
+  )
 }
 
 @Composable
 private fun GuestsTable(items: List<RsvpRecord>, dark: Boolean, onToggle: (RsvpRecord) -> Unit) {
-  Column(modifier = Modifier.fillMaxSize().padding(horizontal = 16.dp)) {
+  Column(modifier = Modifier.fillMaxWidth().padding(horizontal = 16.dp)) {
     Row(
       modifier =
         Modifier.fillMaxWidth().padding(vertical = 8.dp)
@@ -359,51 +398,48 @@ private fun GuestsTable(items: List<RsvpRecord>, dark: Boolean, onToggle: (RsvpR
       HeaderCell("Status", Modifier.weight(0.12f))
     }
 
-    LazyColumn(modifier = Modifier.fillMaxSize()) {
-      items(items, key = { it.id }) { item ->
-        val restricoes = ParseUtils.parseRestricoes(item.restricoes)
-        val hasNecessidades = ParseUtils.hasNecessidades(restricoes)
-        val outras = ParseUtils.outrasRestricoes(restricoes)
-        Row(
-          modifier =
-            Modifier.fillMaxWidth().padding(vertical = 8.dp).padding(horizontal = 10.dp),
-          verticalAlignment = Alignment.CenterVertically,
-        ) {
-          Cell(item.sheetRowId?.toInt()?.toString() ?: "-", Modifier.weight(0.06f))
-          Cell(item.responsavel ?: item.nome ?: "-", Modifier.weight(0.26f), bold = true)
-          Cell(
-            if (item.adulto == "1") "Adulto" else if (item.criancas == "1") "Criança" else "-",
-            Modifier.weight(0.10f),
-          )
-          Cell(item.idade ?: "-", Modifier.weight(0.08f))
-          Cell(
-            if (item.criancas == "1" && !item.nomeCrianca.isNullOrBlank()) item.nomeCrianca else "-",
-            Modifier.weight(0.16f),
-          )
-          Column(modifier = Modifier.weight(0.16f)) {
-            if (outras.isNotEmpty()) {
-              Text(outras.joinToString(", "), fontSize = 12.sp, maxLines = 3)
-            }
-            if (hasNecessidades) {
-              Text(
-                "Necessidades Especiais",
-                fontSize = 12.sp,
-                color = StatusPalette.dangerFg(dark),
-                fontWeight = FontWeight.SemiBold,
-              )
-            }
-            if (outras.isEmpty() && !hasNecessidades) {
-              Text("-", fontSize = 12.sp)
-            }
+    items.forEach { item ->
+      val restricoes = ParseUtils.parseRestricoes(item.restricoes)
+      val hasNecessidades = ParseUtils.hasNecessidades(restricoes)
+      val outras = ParseUtils.outrasRestricoes(restricoes)
+      Row(
+        modifier = Modifier.fillMaxWidth().padding(vertical = 8.dp).padding(horizontal = 10.dp),
+        verticalAlignment = Alignment.CenterVertically,
+      ) {
+        Cell(item.sheetRowId?.toInt()?.toString() ?: "-", Modifier.weight(0.06f))
+        Cell(item.responsavel ?: item.nome ?: "-", Modifier.weight(0.26f), bold = true)
+        Cell(
+          if (item.adulto == "1") "Adulto" else if (item.criancas == "1") "Criança" else "-",
+          Modifier.weight(0.10f),
+        )
+        Cell(item.idade ?: "-", Modifier.weight(0.08f))
+        Cell(
+          if (item.criancas == "1" && !item.nomeCrianca.isNullOrBlank()) item.nomeCrianca else "-",
+          Modifier.weight(0.16f),
+        )
+        Column(modifier = Modifier.weight(0.16f)) {
+          if (outras.isNotEmpty()) {
+            Text(outras.joinToString(", "), fontSize = 12.sp, maxLines = 3)
           }
-          Cell(item.contato ?: "-", Modifier.weight(0.12f))
-          Cell(Format.dateTime(item.created), Modifier.weight(0.14f))
-          Box(modifier = Modifier.weight(0.12f)) {
-            StatusBadge(status = item.normalizedStatus, dark = dark, onClick = { onToggle(item) })
+          if (hasNecessidades) {
+            Text(
+              "Necessidades Especiais",
+              fontSize = 12.sp,
+              color = StatusPalette.dangerFg(dark),
+              fontWeight = FontWeight.SemiBold,
+            )
+          }
+          if (outras.isEmpty() && !hasNecessidades) {
+            Text("-", fontSize = 12.sp)
           }
         }
-        HorizontalDivider()
+        Cell(item.contato ?: "-", Modifier.weight(0.12f))
+        Cell(Format.dateTime(item.created), Modifier.weight(0.14f))
+        Box(modifier = Modifier.weight(0.12f)) {
+          StatusBadge(status = item.normalizedStatus, dark = dark, onClick = { onToggle(item) })
+        }
       }
+      HorizontalDivider(color = MaterialTheme.colorScheme.outlineVariant)
     }
   }
 }
@@ -427,14 +463,6 @@ private fun Cell(text: String, modifier: Modifier = Modifier, bold: Boolean = fa
     fontSize = 12.sp,
     fontWeight = if (bold) FontWeight.SemiBold else FontWeight.Normal,
     maxLines = 3,
-  )
-}
-
-@Composable
-private fun HorizontalDivider() {
-  androidx.compose.material3.HorizontalDivider(
-    modifier = Modifier.fillMaxWidth(),
-    color = MaterialTheme.colorScheme.outlineVariant,
   )
 }
 
