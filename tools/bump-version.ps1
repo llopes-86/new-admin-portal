@@ -1,4 +1,4 @@
-<#
+﻿<#
 .SYNOPSIS
   Aplica bump de versão SemVer (MAJOR.MINOR.PATCH) em todos os pontos do New-Admin-Portal.
 

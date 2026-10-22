@@ -1,4 +1,4 @@
-<#
+﻿<#
 .SYNOPSIS
   Versiona o app Android (Admin M&L) com SemVer amarrado ao git.
 
@@ -43,6 +43,9 @@ $tag = "apk/v$Version"
 $changelog = Join-Path $apkDir 'CHANGELOG.md'
 
 Push-Location $root
+# git escreve em stderr (ex.: "No names found") e o PowerShell 5.1 transformaria
+# isso em erro fatal — aqui stderr do git é apenas informativo.
+$ErrorActionPreference = 'Continue'
 try {
   # ---------------------------------------------------------------- git
   if (-not (Test-Path (Join-Path $root '.git'))) {
@@ -76,14 +79,18 @@ pelas tags ``apk/vX.Y.Z`` deste repositório.
   $summary = if ($Note) { $Note } else { '(resumo pendente)' }
   $entry = "## $Version - $today`n`n$summary`n`n"
 
-  # Insere a nova entrada logo após o parágrafo de cabeçalho
-  $lines = $text -split "`r?`n"
-  $insertAt = 0
-  for ($i = 0; $i -lt $lines.Count; $i++) {
-    if ($lines[$i] -match 'tags ``apk/vX\.Y\.Z``') { $insertAt = $i + 1; break }
+  if ($text -match "(?m)^## $([regex]::Escape($Version)) ") {
+    Write-Output "CHANGELOG já possui a entrada $Version (mantida)."
+  } else {
+    # Insere a nova entrada logo após o parágrafo de cabeçalho
+    $lines = $text -split "`r?`n"
+    $insertAt = 0
+    for ($i = 0; $i -lt $lines.Count; $i++) {
+      if ($lines[$i] -match 'tags ``apk/vX\.Y\.Z``') { $insertAt = $i + 1; break }
+    }
+    $newText = (($lines[0..$insertAt] + ($entry -split "`r?`n") + $lines[($insertAt + 1)..($lines.Count - 1)]) -join "`n")
+    [System.IO.File]::WriteAllText($changelog, $newText, (New-Object System.Text.UTF8Encoding $false))
   }
-  $newText = (($lines[0..$insertAt] + ($entry -split "`r?`n") + $lines[($insertAt + 1)..($lines.Count - 1)]) -join "`n")
-  [System.IO.File]::WriteAllText($changelog, $newText, (New-Object System.Text.UTF8Encoding $false))
 
   # -------------------------------------------------------------- tag
   $existing = git tag -l $tag
