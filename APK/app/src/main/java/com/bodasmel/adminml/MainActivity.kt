@@ -27,6 +27,7 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.core.content.ContextCompat
+import androidx.lifecycle.Lifecycle
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import com.bodasmel.adminml.core.AuthState
 import com.bodasmel.adminml.core.ThemeMode
@@ -63,13 +64,20 @@ class MainActivity : FragmentActivity() {
       }
 
       val settings by container.settings.collectAsStateWithLifecycle()
-      val authState by container.session.state.collectAsStateWithLifecycle()
+      val authState by
+        container.session.state.collectAsStateWithLifecycle(
+          minActiveState = Lifecycle.State.RESUMED,
+        )
 
       AdminMLTheme(darkTheme = settings.themeMode == ThemeMode.DARK) {
         Surface(modifier = Modifier.fillMaxSize(), color = MaterialTheme.colorScheme.background) {
           when (authState) {
             is AuthState.SignedOut, is AuthState.NeedsPasswordChange -> LoginScreen(container.session)
-            is AuthState.Locked -> LockScreen(session = container.session)
+            is AuthState.Locked ->
+              LockScreen(
+                session = container.session,
+                biometricEnabled = settings.biometricUnlockEnabled,
+              )
             is AuthState.SignedIn ->
               HomeScreen(
                 container = container,

@@ -8,26 +8,21 @@ import androidx.biometric.BiometricPrompt
 import androidx.core.content.ContextCompat
 import androidx.fragment.app.FragmentActivity
 
+/** Resultado da checagem de biometria do aparelho. */
+enum class BiometricStatus {
+  AVAILABLE,
+  NO_HARDWARE,
+  NONE_ENROLLED,
+  UNAVAILABLE,
+  UNSUPPORTED,
+}
+
 /**
- * Fachada do desbloqueio biométrico. O app nunca fica inacessível sem
- * sensor/registro — nesse caso a tela de bloqueio oferece a senha.
- *
+ * Porta de entrada do desbloqueio biométrico (permite fake nos testes).
  * Nenhuma exceção é propagada para a UI: qualquer falha vira `onError`.
  */
-object Biometrics {
-
-  /** `true` quando o aparelho tem biometria cadastrada e utilizável. */
-  fun isAvailable(context: Context): Boolean =
-    if (Build.VERSION.SDK_INT < Build.VERSION_CODES.P) {
-      false
-    } else {
-      runCatching {
-          BiometricManager.from(context)
-            .canAuthenticate(BiometricManager.Authenticators.BIOMETRIC_WEAK) ==
-            BiometricManager.BIOMETRIC_SUCCESS
-        }
-        .getOrDefault(false)
-    }
+interface BiometricGate {
+  fun status(context: Context): BiometricStatus
 
   fun authenticate(
     activity: Activity,
@@ -37,15 +32,62 @@ object Biometrics {
     onSuccess: () -> Unit,
     onError: (String) -> Unit,
     onCancel: () -> Unit,
+  )
+}
+
+/** Implementação real usando [BiometricPrompt]. */
+object AndroidBiometricGate : BiometricGate {
+
+  override fun status(context: Context): BiometricStatus {
+    if (Build.VERSION.SDK_INT < Build.VERSION_CODES.P) return BiometricStatus.UNSUPPORTED
+    val code =
+      runCatching {
+          BiometricManager.from(context)
+            .canAuthenticate(BiometricManager.Authenticators.BIOMETRIC_WEAK)
+        }
+        .getOrElse { return BiometricStatus.UNAVAILABLE }
+    return when (code) {
+      BiometricManager.BIOMETRIC_SUCCESS -> BiometricStatus.AVAILABLE
+      BiometricManager.BIOMETRIC_ERROR_NO_HARDWARE -> BiometricStatus.NO_HARDWARE
+      BiometricManager.BIOMETRIC_ERROR_NONE_ENROLLED -> BiometricStatus.NONE_ENROLLED
+      BiometricManager.BIOMETRIC_ERROR_HW_UNAVAILABLE -> BiometricStatus.UNAVAILABLE
+      BiometricManager.BIOMETRIC_ERROR_UNSUPPORTED -> BiometricStatus.UNSUPPORTED
+      else -> BiometricStatus.UNAVAILABLE
+    }
+  }
+
+  override fun authenticate(
+    activity: Activity,
+    title: String,
+    subtitle: String?,
+    negativeButton: String,
+    onSuccess: () -> Unit,
+    onError: (String) -> Unit,
+    onCancel: () -> Unit,
   ) {
     val fragmentActivity = activity as? FragmentActivity
     if (fragmentActivity == null) {
       onError("Este aparelho não oferece suporte à biometria. Use a senha.")
       return
     }
-    if (!isAvailable(fragmentActivity)) {
-      onError("Biometria indisponível. Cadastre uma digital ou use a senha.")
-      return
+    when (status(fragmentActivity)) {
+      BiometricStatus.AVAILABLE -> Unit
+      BiometricStatus.NONE_ENROLLED -> {
+        onError("Nenhuma biometria cadastrada. Cadastre uma digital ou rosto no aparelho.")
+        return
+      }
+      BiometricStatus.NO_HARDWARE -> {
+        onError("Este aparelho não tem leitor biométrico. Use a senha.")
+        return
+      }
+      BiometricStatus.UNSUPPORTED -> {
+        onError("Biometria requer Android 9 ou superior. Use a senha.")
+        return
+      }
+      BiometricStatus.UNAVAILABLE -> {
+        onError("Biometria indisponível agora. Tente novamente ou use a senha.")
+        return
+      }
     }
 
     runCatching {
@@ -104,4 +146,28 @@ object Biometrics {
         "Tempo esgotado. Tente novamente ou use a senha."
       else -> "Não foi possível ler a biometria. Tente novamente ou use a senha."
     }
+}
+
+/** Compatibilidade com o código existente da tela de bloqueio. */
+object Biometrics {
+  fun isAvailable(context: Context): Boolean =
+    AndroidBiometricGate.status(context) == BiometricStatus.AVAILABLE
+
+  fun authenticate(
+    activity: Activity,
+    title: String = "Desbloquear Admin M&L",
+    subtitle: String? = null,
+    negativeButton: String = "Usar senha",
+    onSuccess: () -> Unit,
+    onError: (String) -> Unit,
+    onCancel: () -> Unit,
+  ) = AndroidBiometricGate.authenticate(
+    activity = activity,
+    title = title,
+    subtitle = subtitle,
+    negativeButton = negativeButton,
+    onSuccess = onSuccess,
+    onError = onError,
+    onCancel = onCancel,
+  )
 }

@@ -1,6 +1,7 @@
 package com.bodasmel.adminml.core
 
 import android.content.Context
+import androidx.datastore.preferences.core.booleanPreferencesKey
 import androidx.datastore.preferences.core.edit
 import androidx.datastore.preferences.core.stringPreferencesKey
 import androidx.datastore.preferences.preferencesDataStore
@@ -16,6 +17,7 @@ data class AppSettings(
   val pbBaseUrl: String = DEFAULT_PB_BASE_URL,
   val gotifyUrl: String = DEFAULT_GOTIFY_URL,
   val themeMode: ThemeMode = ThemeMode.LIGHT,
+  val biometricUnlockEnabled: Boolean = true,
 ) {
   companion object {
     /** Mesmo endpoint usado pelo portal web: https://portal.bodasmel.com.br/api/pb */
@@ -33,6 +35,7 @@ class SettingsStore(private val context: Context) {
     val pbBaseUrl = stringPreferencesKey("pb_base_url")
     val gotifyUrl = stringPreferencesKey("gotify_url")
     val themeMode = stringPreferencesKey("theme_mode")
+    val biometricUnlockEnabled = booleanPreferencesKey("biometric_unlock_enabled")
   }
 
   val settings: Flow<AppSettings> =
@@ -44,6 +47,7 @@ class SettingsStore(private val context: Context) {
           prefs[Keys.themeMode]
             ?.let { runCatching { ThemeMode.valueOf(it) }.getOrNull() }
             ?: ThemeMode.LIGHT,
+        biometricUnlockEnabled = prefs[Keys.biometricUnlockEnabled] ?: true,
       )
     }
 
@@ -58,5 +62,9 @@ class SettingsStore(private val context: Context) {
 
   suspend fun setThemeMode(mode: ThemeMode) {
     context.dataStore.edit { it[Keys.themeMode] = mode.name }
+  }
+
+  suspend fun setBiometricUnlockEnabled(enabled: Boolean) {
+    context.dataStore.edit { it[Keys.biometricUnlockEnabled] = enabled }
   }
 }

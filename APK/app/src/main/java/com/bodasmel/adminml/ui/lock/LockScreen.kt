@@ -50,7 +50,9 @@ import androidx.compose.ui.text.input.PasswordVisualTransformation
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import com.bodasmel.adminml.R
-import com.bodasmel.adminml.core.Biometrics
+import com.bodasmel.adminml.core.AndroidBiometricGate
+import com.bodasmel.adminml.core.BiometricGate
+import com.bodasmel.adminml.core.BiometricStatus
 import com.bodasmel.adminml.core.SessionManager
 import com.bodasmel.adminml.core.UnlockResult
 import com.bodasmel.adminml.theme.InterFamily
@@ -65,20 +67,26 @@ import kotlinx.coroutines.launch
  * não existe, é cancelado ou o desbloqueio falha.
  */
 @Composable
-fun LockScreen(session: SessionManager, modifier: Modifier = Modifier) {
+fun LockScreen(
+  session: SessionManager,
+  biometricEnabled: Boolean = true,
+  gate: BiometricGate = AndroidBiometricGate,
+  modifier: Modifier = Modifier,
+) {
   val context = LocalContext.current
   val activity = remember(context) { context.findActivity() }
-  val biometricsAvailable = remember(context) { Biometrics.isAvailable(context) }
+  val biometricStatus = remember(context, gate) { gate.status(context) }
+  val biometricsAvailable = biometricStatus == BiometricStatus.AVAILABLE
 
   val user = session.currentUser
   val scope = rememberCoroutineScope()
-  var passwordMode by rememberSaveable { mutableStateOf(!biometricsAvailable) }
+  var passwordMode by rememberSaveable { mutableStateOf(!biometricEnabled || !biometricsAvailable) }
   var password by rememberSaveable { mutableStateOf("") }
   var error by remember { mutableStateOf<String?>(null) }
   var busy by remember { mutableStateOf(false) }
 
-  LaunchedEffect(Unit) {
-    if (!biometricsAvailable) {
+  LaunchedEffect(biometricEnabled, biometricsAvailable, biometricStatus) {
+    if (!biometricEnabled || !biometricsAvailable) {
       passwordMode = true
       return@LaunchedEffect
     }
@@ -87,7 +95,7 @@ fun LockScreen(session: SessionManager, modifier: Modifier = Modifier) {
       passwordMode = true
       return@LaunchedEffect
     }
-    Biometrics.authenticate(
+    gate.authenticate(
       activity = host,
       onSuccess = { if (!session.unlockWithBiometrics()) passwordMode = true },
       onError = {
