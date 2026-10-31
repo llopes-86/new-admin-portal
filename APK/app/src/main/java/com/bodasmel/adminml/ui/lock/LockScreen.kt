@@ -90,7 +90,10 @@ fun LockScreen(session: SessionManager, modifier: Modifier = Modifier) {
     Biometrics.authenticate(
       activity = host,
       onSuccess = { if (!session.unlockWithBiometrics()) passwordMode = true },
-      onError = { passwordMode = true },
+      onError = {
+        error = it
+        passwordMode = true
+      },
       onCancel = { passwordMode = true },
     )
   }

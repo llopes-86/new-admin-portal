@@ -167,7 +167,7 @@ Stack do app:
 
 | Módulo web | O que o app precisa fazer |
 |---|---|
-| `login.js` / `utils/auth.js` | Login e-mail+senha; **troca obrigatória de senha** (`must_change_password`); logout; token persistido e expiração; sessão sobrevive ao fechamento do app |
+| `login.js` / `utils/auth.js` | Login e-mail+senha; **troca obrigatória de senha** (`must_change_password`); logout; sessão **em memória** (nunca restaurada em processo novo), bloqueio com biometria/senha ao sair e logout após 15 min em segundo plano; 401 encerra a sessão |
 | `features/guests.js` | Lista (tabela no desktop / cards no mobile); busca por nome, responsável e **telefone (só dígitos, ≥2)**; filtro status (Todos/Pendentes/Confirmados); filtro categoria (Adultos/Crianças/Necessidades especiais/Veganos/Intolerância à lactose); **contadores por opção** nos filtros; paginação 25/pág; **swipe horizontal** para paginar; badge de status clicável (toggle Pendente↔Confirmado) com animação; "Aprovar Todos" com modal de confirmação e feedback (`X confirmados, Y falhas`); estatística "N registros (X pendentes)"; badge de pendentes na navegação |
 | `features/messages.js` | Mural em grid de cards; filtro (Todas/Pendentes/Aprovadas/Rejeitadas) com contadores; botões Aprovar / Rejeitar / Pendente; "Aprovar Todas" em lote; paginação 12/pág; toasts de sucesso/erro |
 | `features/export.js` | **XLSX** com abas `Convidados` e `Mural` (só cria aba se houver dados), larguras de coluna, nomes `convidados-bodas-ml-AAAAMMDD-<hash8>.xlsx` / `mensagens-mural-ml-...` / `dados-bodas-ml-...`; **PDF** A4 **paisagem**, título + linha de filtros + "Exportado em", cabeçalho verde `rgb(5,150,105)` (convidados) e índigo `rgb(99,102,241)` (mural), linhas alternadas `rgb(245,247,250)`, coluna de mensagem com quebra de linha, footer "Exportado em" + "Página N" |
@@ -253,7 +253,7 @@ Colunas do export (paridade exata):
 |---|---|---|
 | **F0** Toolchain | ✅ | Android SDK instalado em `C:\Users\llopes\AppData\Local\Android\Sdk` (cmdline-tools 23.0, platform-tools 37.0.1, platforms;android-35/36, build-tools;35.0.0). Projeto Gradle criado em `APK/` (AGP 9.0.1, Gradle 9.1.0, Kotlin 2.3.20, Compose BOM 2026.03.01, Navigation3 1.0.1). Keystore de release: `C:\Bodas\backup\adminml-keystore\adminml-release.jks` (alias `adminml`, senha em `keystore-credentials.txt`). `keystore.properties` (gitignored) aponta para ele. `assembleDebug` e `assembleRelease` **verdes**; APK assinado em `APK/dist/AdminML-1.0.0.apk` (14,1 MB), certificado `CN=Admin M&L` SHA-256 `2d1dce3f162a8bf3073a6d26a018d6c0783db830f20f408970ca63de23863a65` |
 | **F1** Base do app | ✅ | Tema claro/escuro com a paleta exata do portal (`theme/Color.kt`), `AdminMLTheme` sem dynamic color, `SettingsStore` (DataStore: URL PocketBase, URL Gotify, tema), `SecureStore` (EncryptedSharedPreferences: token PB, client token Gotify, último id de mensagem), HomeScreen com bottom-nav (<600dp) / navigation-rail (>=600dp) e abas Convidados/Mural/Exportar/Sair, tela de Ajustes com URL do PocketBase, URL do Gotify, tema, teste de conexão e **vínculo do Gotify** (usuário/senha -> `POST /client` -> client token) |
-| **F2** Auth | ✅ | `SessionManager` (login, troca obrigatória de senha, logout, re-autenticação com a nova senha, mensagens de erro idênticas ao portal), `LoginScreen`/`LoginViewModel` com modo login/troca de senha, sessão restaurada do storage criptografado |
+| **F2** Auth | ✅ | `SessionManager` (login, troca obrigatória de senha, logout, re-autenticação com a nova senha, mensagens de erro idênticas ao portal), `LoginScreen`/`LoginViewModel` com modo login/troca de senha; sessão em memória (sem restore), `SessionLock` (bloqueio em 1,5 s + logout em 15 min) e `Biometrics` (biometria Android 9+, fallback senha) |
 | **F6** Push (parte do app) | ✅ (falta teste real) | `GotifyClient` (cria client token, histórico `/message`, WebSocket `/stream` com `X-Gotify-Key` e `sinceId`), `GotifyService` (Foreground Service `specialUse`, notificação persistente, reconexão com backoff, dedupe por id, filtra título "RSVP"), `Notifications` (canais `rsvp_confirmacoes` HIGH e `monitoramento`, notificação com big text e deep link para a aba de convidados), `ic_stat_rsvp.xml` |
 | **F7** Servidor | ⏳ pendente | Hook `notify-rsvp.pb.js` ainda precisa ser corrigido (`onRecordAfterCreateRequest` -> `onRecordAfterCreateSuccess`) e o PocketBase reiniciado no EasyPanel |
 
@@ -583,19 +583,23 @@ Feedback do usuário no aparelho (Redmi Note 12S / Android 15) e o que foi feito
 | Mural não paginava por swipe | `Modifier.swipeToPaginate` extraído para componente compartilhado e aplicado no Mural | `ui/components/SwipeToPaginate.kt`, `ui/messages/MessagesScreen.kt` |
 | Botão "Pendente" horrível | Botões do Mural no padrão do `.btn-group` da web: sem ícones, cores `#10B981`/`#EF4444`/`#F59E0B`, texto branco, 36 dp, largura 1:1:1, quebra em telas estreitas (`FlowRow`) | `ui/messages/MessagesScreen.kt` |
 | Filtros mal dispostos | Empilhados e com largura total abaixo de 1025 dp (como o `flex-direction: column` do portal), fonte 16 sp e altura de toque maior | `ui/guests/GuestsScreen.kt`, `ui/components/FilterDropdown.kt` |
-| Tela inicial não salva usuário e senha | "Lembrar-me" (default ligado): e-mail e senha no `EncryptedSharedPreferences` (Keystore), formulário pré-preenchido, botão "Limpar credenciais salvas" nos Ajustes; logout só limpa a sessão | `core/SecureStore.kt`, `core/SessionManager.kt`, `ui/login/*`, `ui/settings/SettingsScreen.kt` |
+| Tela inicial não salva usuário e senha | Desde a v1.3.0 o "Lembrar meu e-mail" guarda **somente o e-mail**; a senha nunca é persistida (a antiga é apagada na primeira abertura). Sessão em memória, bloqueio ao sair e logout após 15 min | `core/SecureStore.kt`, `core/SessionManager.kt`, `core/SessionLock.kt`, `core/Biometrics.kt`, `ui/login/*`, `ui/lock/LockScreen.kt`, `ui/settings/SettingsScreen.kt` |
 | Login precisa parecer com o web | Tela reconstruída: fundo `africa-day-bg.jpg`, card areia com borda dourada, logo Sankofa em círculo de 150 dp, "Portal Admin" / "Bodas de Esmeralda — M&L", labels acima dos campos, overlay "Acessando painel", versão no rodapé e *shake* no erro | `ui/login/LoginScreen.kt`, `res/drawable-nodpi/{africa_day_bg.jpg,sankofa.png}` |
 
 Bônus de paridade: **indicador de página flutuante "3/5"** (`ui/components/PageIndicator.kt`),
 igual ao `showPageIndicator` do portal.
 
-### Testes (26 no total, todos verdes)
+### Testes (57 no total, todos verdes)
 
 | Suite | n | Cobre |
 |---|---|---|
 | `StartupTest` | 3 | regressão do crash de abertura |
 | `ScreenCompositionTest` | 3 | Activity + composição das telas |
-| `LoginViewModelTest` | 6 | pré-preenchimento, switch "Lembrar-me", validações de login/troca de senha |
+| `LoginViewModelTest` | 6 | e-mail lembrado (senha nunca), switch "Lembrar meu e-mail", validações de login/troca de senha |
+| `SessionManagerTest` | 10 | sessão nunca restaurada, lock/unlock, logout e ausência de senha no storage |
+| `SessionLockTest` | 4 | bloqueio em 1,5 s, logout em 15 min e cancelamento ao voltar |
+| `LockScreenTest` | 4 | tela de bloqueio, fallback de senha e saída da conta |
+| `ExitConfirmationTest` | 4 | confirmação no Voltar/Sair e back em Ajustes |
 | `SwipeToPaginateTest` | 6 | cálculo da página de destino no swipe |
 | `GotifyUrlTest` | 6 | normalização de URL |
 | `GotifyProductionSmokeTest` | 2 | contra o Gotify de produção |

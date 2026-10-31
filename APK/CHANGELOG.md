@@ -3,6 +3,37 @@
 Todas as mudanças do app Android. O versionamento segue SemVer e é controlado
 pelas tags ``apk/vX.Y.Z`` deste repositório.
 
+## 1.3.0 - 2026-10-31
+
+Sessão no padrão de app bancário: ao sair do app a sessão é bloqueada e só volta
+com biometria (ou senha); depois de 15 minutos em segundo plano é encerrada de vez.
+O app nunca retoma a sessão de um processo anterior.
+
+### Adicionado
+- **Tela de bloqueio** com a identidade do portal (fundo, card areia, Sankofa,
+  Playfair/Inter), e-mail da conta e botão de desbloqueio.
+- **Desbloqueio por biometria** (Android 9+) via `androidx.biometric`, com fallback
+  para senha quando não há sensor, biometria cancelada ou bloqueada. A senha de
+  desbloqueio é validada no PocketBase.
+- **Logout por inatividade**: 15 minutos em segundo plano encerram a sessão.
+- **Confirmação de saída**: o Voltar na raiz do painel e o item **Sair** abrem um
+  diálogo antes de encerrar; em Ajustes o Voltar retorna ao painel.
+- **Tratamento de 401**: qualquer chamada recusada pelo PocketBase encerra a sessão
+  e volta ao login com "Sessão expirada. Faça login novamente.".
+
+### Alterado
+- **Sessão não é mais restaurada**: o app sempre abre no login (token limpo no
+  início do processo). Token e usuário ficam apenas em memória.
+- **"Lembrar-me" virou "Lembrar meu e-mail"**: a senha nunca é gravada; apenas o
+  e-mail é pré-preenchido. A senha gravada por versões antigas é apagada na
+  primeira abertura.
+- Bloqueio automático após 1,5 s em segundo plano (evita falso positivo em rotação,
+  seletor de arquivos e diálogos do sistema).
+
+### Corrigido
+- Sessão ficava aberta indefinidamente ao minimizar, bloquear a tela ou abrir um
+  PDF exportado em outro app.
+
 ## 1.2.0 - 2026-10-22
 
 UX do app alinhada ao portal web: login com as fontes e cores do site, card de

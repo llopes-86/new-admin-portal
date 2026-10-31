@@ -10,7 +10,7 @@ novo RSVP enviado pelo site.
 
 | Área | Implementação |
 |---|---|
-| Login | E-mail + senha no PocketBase; troca obrigatória de senha (`must_change_password`); sessão criptografada no aparelho |
+| Login | E-mail + senha no PocketBase; troca obrigatória de senha (`must_change_password`); sessão **em memória** (nunca restaurada ao abrir o app), bloqueio ao sair com biometria/senha e logout após 15 min em segundo plano |
 | Convidados | Lista com busca (nome/responsável/telefone), filtros de status e categoria **com contadores**, paginação (25/pág), **swipe horizontal** para paginar, badge de status clicável (Pendente ⇄ Confirmado), "Aprovar Todos", contagem de pendentes na navegação, destaque de *Necessidades Especiais* |
 | Mural | Cards de mensagem, filtro (Todas/Pendentes/Aprovadas/Rejeitadas) com contadores, Aprovar/Rejeitar/Pendente, "Aprovar Todas", paginação (12/pág) |
 | Exportar | **XLSX** (abas `Convidados` e `Mural`) e **PDF** (A4 paisagem, cabeçalho colorido, linhas alternadas, rodapé com página) — salvam em **Downloads** e abrem no app de visualização do celular |
@@ -198,7 +198,26 @@ O script `tools/bump-app-version.ps1`:
 
 ---
 
-## 9. O que mudou na v1.1.0
+## 9. O que mudou na v1.3.0
+
+- **Sessão não fica aberta ao sair do app**: ao ir para segundo plano, a sessão é
+  bloqueada após 1,5 s. Ao voltar, é preciso desbloquear com **biometria** (Android 9+)
+  ou digitando a senha.
+- **Logout por inatividade**: depois de **15 minutos** em segundo plano a sessão é
+  encerrada de vez e um novo login é exigido.
+- **Nada de sessão restaurada**: ao abrir o app (processo novo) ele sempre começa no
+  login, mesmo que o token anterior ainda existisse no armazenamento.
+- **Confirmação ao sair**: o botão Voltar na raiz do painel e o item **Sair** pedem
+  confirmação antes de encerrar.
+- **“Lembrar-me” agora é “Lembrar meu e-mail”**: a senha nunca é gravada; apenas o
+  e-mail é pré-preenchido. A senha antiga de versões anteriores é apagada na primeira
+  abertura.
+- **Sessão expirada (401)**: qualquer chamada recusada pelo PocketBase encerra a
+  sessão e volta para o login com a mensagem “Sessão expirada. Faça login novamente.”.
+
+---
+
+## 10. O que mudou na v1.1.0
 
 - **Login igual ao portal web**: fundo `africa-day-bg.jpg`, card areia com borda dourada,
   logo Sankofa em círculo, títulos "Portal Admin" / "Bodas de Esmeralda — M&L", rótulos

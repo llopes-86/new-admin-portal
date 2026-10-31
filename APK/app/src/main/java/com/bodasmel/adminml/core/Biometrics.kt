@@ -2,6 +2,7 @@ package com.bodasmel.adminml.core
 
 import android.app.Activity
 import android.content.Context
+import android.os.Build
 import androidx.biometric.BiometricManager
 import androidx.biometric.BiometricPrompt
 import androidx.core.content.ContextCompat
@@ -17,12 +18,16 @@ object Biometrics {
 
   /** `true` quando o aparelho tem biometria cadastrada e utilizável. */
   fun isAvailable(context: Context): Boolean =
-    runCatching {
-        BiometricManager.from(context)
-          .canAuthenticate(BiometricManager.Authenticators.BIOMETRIC_WEAK) ==
-          BiometricManager.BIOMETRIC_SUCCESS
-      }
-      .getOrDefault(false)
+    if (Build.VERSION.SDK_INT < Build.VERSION_CODES.P) {
+      false
+    } else {
+      runCatching {
+          BiometricManager.from(context)
+            .canAuthenticate(BiometricManager.Authenticators.BIOMETRIC_WEAK) ==
+            BiometricManager.BIOMETRIC_SUCCESS
+        }
+        .getOrDefault(false)
+    }
 
   fun authenticate(
     activity: Activity,

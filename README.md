@@ -114,6 +114,7 @@ data e o badge de status).
 | 2026-10-22 | **v1.0.0** — app completo (F0→F8), hook do PocketBase corrigido e validado contra o PocketBase v0.40.1 |
 | 2026-10-22 | **v1.1.0** — UX alinhada ao portal (login igual ao web, lembrar-me, swipe no mural) |
 | 2026-10-22 | **v1.2.0** — paridade total: fontes do site no app, card igual ao portal, data corrigida, busca/filtros roláveis, notificações compactas |
+| 2026-10-31 | **v1.3.0** — segurança da sessão: bloqueio ao sair com biometria/senha, logout após 15 min em segundo plano, confirmação de saída e “Lembrar meu e-mail” (senha nunca mais é gravada) |
 
 ---
 
@@ -182,7 +183,7 @@ New-Admin-Portal/
 │   │   ├── theme/           #   paleta, tipografia e fontes do portal
 │   │   └── ui/              #   login, home, guests, messages, export, settings, components
 │   ├── app/src/main/res/font/   # Inter + Playfair Display (mesmos glifos do site)
-│   ├── app/src/test/        #   32 testes (Robolectric)
+│   ├── app/src/test/        #   57 testes (Robolectric)
 │   ├── CHANGELOG.md
 │   ├── stack.md             #   ★ mapa técnico completo do projeto
 │   └── README.md            #   guia de instalação e operação do app
@@ -260,7 +261,7 @@ powershell -ExecutionPolicy Bypass -File tools\bump-version.ps1 -Version 2.0.13
 
 ```powershell
 cd APK
-.\gradlew.bat :app:testDebugUnitTest     # 32 testes
+.\gradlew.bat :app:testDebugUnitTest     # 57 testes
 .\build-apk.ps1                          # release assinado -> dist\AdminML-<versão>.apk
 ```
 
@@ -273,7 +274,11 @@ aponta para a chave de release, que fica **fora do repositório** — sem ela n�
 |---|---|---|
 | `StartupTest` | 3 | regressão do crash de abertura (corrida no `AppContainer`) |
 | `ScreenCompositionTest` | 3 | Activity e composição das telas |
-| `LoginViewModelTest` | 6 | pré-preenchimento, "Lembrar-me", validações de login e troca de senha |
+| `LoginViewModelTest` | 6 | pré-preenchimento do e-mail (senha nunca), "Lembrar meu e-mail", validações de login e troca de senha |
+| `SessionManagerTest` | 10 | sessão nunca restaurada, lock/unlock, logout e ausência de senha no storage |
+| `SessionLockTest` | 4 | bloqueio em 1,5 s, logout em 15 min e cancelamento ao voltar |
+| `LockScreenTest` | 4 | tela de bloqueio, fallback de senha e saída da conta |
+| `ExitConfirmationTest` | 4 | confirmação no Voltar/Sair e back em Ajustes |
 | `SwipeToPaginateTest` | 6 | cálculo da página de destino no swipe |
 | `GotifyUrlTest` | 6 | normalização de URL (esquema duplicado, proxy, `wss`) |
 | `GotifyProductionSmokeTest` | 2 | teste real contra o Gotify de produção |
