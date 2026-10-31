@@ -27,7 +27,9 @@ class SessionLock(
   }
 
   fun onBackground() {
-    if (lockJob?.isActive == true) return
+    // Idempotente: um segundo aviso de "saiu" não reinicia o prazo de logout
+    // (o lock pode já ter disparado enquanto o logout continua agendado).
+    if (lockJob?.isActive == true || logoutJob?.isActive == true) return
     lockJob = scope.launch {
       delay(lockDelayMs)
       session.lock()
