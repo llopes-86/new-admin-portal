@@ -26,7 +26,7 @@ novo RSVP enviado pelo site.
 3. Toque no `.apk` e instale. (O APK é assinado com a chave de release — atualizações futuras exigem a mesma chave.)
 4. Instale também pela USB, se preferir:
    ```powershell
-   adb install -r dist\AdminML-1.0.0.apk
+   adb install -r dist\AdminML-1.3.0.apk
    ```
 
 ---

@@ -5,7 +5,7 @@
 **Console de operação do evento: lista de convidados, mural de mensagens e exportação.**
 
 [![portal](https://img.shields.io/badge/portal%20web-2.0.12-0F1A2E?style=flat-square)](https://portal.bodasmel.com.br)
-[![app](https://img.shields.io/badge/app%20Android-1.2.0-5B7F3F?style=flat-square)](https://github.com/llopes-86/new-admin-portal/releases/tag/apk/v1.2.0)
+[![app](https://img.shields.io/badge/app%20Android-1.3.0-5B7F3F?style=flat-square)](https://github.com/llopes-86/new-admin-portal/releases/tag/apk/v1.3.0)
 [![pocketbase](https://img.shields.io/badge/PocketBase-v0.40.1-2563EB?style=flat-square)](#)
 [![gotify](https://img.shields.io/badge/push-Gotify%20v2.9.1-22C55E?style=flat-square)](#)
 [![privado](https://img.shields.io/badge/reposit%C3%B3rio-privado-94A3B8?style=flat-square)](#)
@@ -225,9 +225,9 @@ PWA instalável, sem build step (é HTML/CSS/JS servido como estático).
 
 Guia de instalação e operação: **[`APK/README.md`](APK/README.md)**.
 
-⬇️ **Download:** [`AdminML-1.2.0.apk`](https://github.com/llopes-86/new-admin-portal/releases/download/apk/v1.2.0/AdminML-1.2.0.apk)
-(14,4 MB · `versionName=1.2.0` · `versionCode=11` · assinado com a chave de release — **atualiza por
-cima** da v1.1.0 sem perder as credenciais salvas)
+⬇️ **Download:** [`AdminML-1.3.0.apk`](https://github.com/llopes-86/new-admin-portal/releases/download/apk/v1.3.0/AdminML-1.3.0.apk)
+(15,3 MB · `versionName=1.3.0` · `versionCode=25` · assinado com a chave de release — **atualiza por
+cima** da v1.2.0 sem perder o e-mail lembrado; a senha gravada por versões antigas é apagada)
 
 ---
 
