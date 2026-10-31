@@ -5,7 +5,7 @@
 **Console de operação do evento: lista de convidados, mural de mensagens e exportação.**
 
 [![portal](https://img.shields.io/badge/portal%20web-2.0.12-0F1A2E?style=flat-square)](https://portal.bodasmel.com.br)
-[![app](https://img.shields.io/badge/app%20Android-1.3.0-5B7F3F?style=flat-square)](https://github.com/llopes-86/new-admin-portal/releases/tag/apk/v1.3.0)
+[![app](https://img.shields.io/badge/app%20Android-1.4.0-5B7F3F?style=flat-square)](https://github.com/llopes-86/new-admin-portal/releases/tag/apk/v1.4.0)
 [![pocketbase](https://img.shields.io/badge/PocketBase-v0.40.1-2563EB?style=flat-square)](#)
 [![gotify](https://img.shields.io/badge/push-Gotify%20v2.9.1-22C55E?style=flat-square)](#)
 [![privado](https://img.shields.io/badge/reposit%C3%B3rio-privado-94A3B8?style=flat-square)](#)
@@ -115,6 +115,7 @@ data e o badge de status).
 | 2026-10-22 | **v1.1.0** — UX alinhada ao portal (login igual ao web, lembrar-me, swipe no mural) |
 | 2026-10-22 | **v1.2.0** — paridade total: fontes do site no app, card igual ao portal, data corrigida, busca/filtros roláveis, notificações compactas |
 | 2026-10-31 | **v1.3.0** — segurança da sessão: bloqueio ao sair com biometria/senha, logout após 15 min em segundo plano, confirmação de saída e “Lembrar meu e-mail” (senha nunca mais é gravada) |
+| 2026-10-31 | **v1.4.0** — biometria como padrão no desbloqueio (ajuste nos Ajustes, retry e fallback de senha) e correção do “vai direto para a senha” no Android 10+ |
 
 ---
 
@@ -183,7 +184,7 @@ New-Admin-Portal/
 │   │   ├── theme/           #   paleta, tipografia e fontes do portal
 │   │   └── ui/              #   login, home, guests, messages, export, settings, components
 │   ├── app/src/main/res/font/   # Inter + Playfair Display (mesmos glifos do site)
-│   ├── app/src/test/        #   57 testes (Robolectric)
+│   ├── app/src/test/        #   76 testes (Robolectric)
 │   ├── CHANGELOG.md
 │   ├── stack.md             #   ★ mapa técnico completo do projeto
 │   └── README.md            #   guia de instalação e operação do app
@@ -225,9 +226,9 @@ PWA instalável, sem build step (é HTML/CSS/JS servido como estático).
 
 Guia de instalação e operação: **[`APK/README.md`](APK/README.md)**.
 
-⬇️ **Download:** [`AdminML-1.3.0.apk`](https://github.com/llopes-86/new-admin-portal/releases/download/apk/v1.3.0/AdminML-1.3.0.apk)
-(15,3 MB · `versionName=1.3.0` · `versionCode=25` · assinado com a chave de release — **atualiza por
-cima** da v1.2.0 sem perder o e-mail lembrado; a senha gravada por versões antigas é apagada)
+⬇️ **Download:** [`AdminML-1.4.0.apk`](https://github.com/llopes-86/new-admin-portal/releases/download/apk/v1.4.0/AdminML-1.4.0.apk)
+(15,3 MB · `versionName=1.4.0` · `versionCode=34` · assinado com a chave de release — **atualiza por
+cima** da v1.3.0 sem perder o e-mail lembrado; a senha gravada por versões antigas é apagada)
 
 ---
 
@@ -261,7 +262,7 @@ powershell -ExecutionPolicy Bypass -File tools\bump-version.ps1 -Version 2.0.13
 
 ```powershell
 cd APK
-.\gradlew.bat :app:testDebugUnitTest     # 57 testes
+.\gradlew.bat :app:testDebugUnitTest     # 76 testes
 .\build-apk.ps1                          # release assinado -> dist\AdminML-<versão>.apk
 ```
 
@@ -277,7 +278,10 @@ aponta para a chave de release, que fica **fora do repositório** — sem ela n�
 | `LoginViewModelTest` | 6 | pré-preenchimento do e-mail (senha nunca), "Lembrar meu e-mail", validações de login e troca de senha |
 | `SessionManagerTest` | 10 | sessão nunca restaurada, lock/unlock, logout e ausência de senha no storage |
 | `SessionLockTest` | 4 | bloqueio em 1,5 s, logout em 15 min e cancelamento ao voltar |
-| `LockScreenTest` | 4 | tela de bloqueio, fallback de senha e saída da conta |
+| `LockScreenTest` | 10 | tela de bloqueio, biometria como padrão, retry/cancelar, fallback de senha e saída da conta |
+| `BiometricSettingsTest` | 4 | switch de biometria nos Ajustes (validar antes de salvar) |
+| `BiometricGateTest` | 4 | status do BiometricManager e contrato do gate sem exceções |
+| `SettingsStoreTest` | 5 | preferência persistente de biometria e demais ajustes |
 | `ExitConfirmationTest` | 4 | confirmação no Voltar/Sair e back em Ajustes |
 | `SwipeToPaginateTest` | 6 | cálculo da página de destino no swipe |
 | `GotifyUrlTest` | 6 | normalização de URL (esquema duplicado, proxy, `wss`) |

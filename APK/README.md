@@ -10,7 +10,7 @@ novo RSVP enviado pelo site.
 
 | Área | Implementação |
 |---|---|
-| Login | E-mail + senha no PocketBase; troca obrigatória de senha (`must_change_password`); sessão **em memória** (nunca restaurada ao abrir o app), bloqueio ao sair com biometria/senha e logout após 15 min em segundo plano |
+| Login | E-mail + senha no PocketBase; troca obrigatória de senha (`must_change_password`); sessão **em memória** (nunca restaurada ao abrir o app), bloqueio ao sair com biometria/senha e logout após 15 min em segundo plano. Biometria opcional (padrão ligada) em Ajustes → Segurança |
 | Convidados | Lista com busca (nome/responsável/telefone), filtros de status e categoria **com contadores**, paginação (25/pág), **swipe horizontal** para paginar, badge de status clicável (Pendente ⇄ Confirmado), "Aprovar Todos", contagem de pendentes na navegação, destaque de *Necessidades Especiais* |
 | Mural | Cards de mensagem, filtro (Todas/Pendentes/Aprovadas/Rejeitadas) com contadores, Aprovar/Rejeitar/Pendente, "Aprovar Todas", paginação (12/pág) |
 | Exportar | **XLSX** (abas `Convidados` e `Mural`) e **PDF** (A4 paisagem, cabeçalho colorido, linhas alternadas, rodapé com página) — salvam em **Downloads** e abrem no app de visualização do celular |
@@ -26,7 +26,7 @@ novo RSVP enviado pelo site.
 3. Toque no `.apk` e instale. (O APK é assinado com a chave de release — atualizações futuras exigem a mesma chave.)
 4. Instale também pela USB, se preferir:
    ```powershell
-   adb install -r dist\AdminML-1.3.0.apk
+   adb install -r dist\AdminML-1.4.0.apk
    ```
 
 ---
@@ -198,7 +198,22 @@ O script `tools/bump-app-version.ps1`:
 
 ---
 
-## 9. O que mudou na v1.3.0
+## 9. O que mudou na v1.4.0
+
+- **Biometria como padrão**: com a opção ligada (Ajustes → Segurança), todo bloqueio
+  abre a digital/rosto. A senha só aparece se você tocar em “Usar senha” ou se o
+  aparelho não tiver biometria disponível.
+- **Ajuste explícito** “Desbloquear com biometria”, validado com um prompt antes de
+  ativar; sem digital/rosto cadastrado, o app explica e oferece “Cadastrar biometria”.
+- **Cancelou ou falhou?** A tela continua em biometria com “Tentar biometria
+  novamente”; não cai mais automaticamente na senha (causa do “vai direto para a
+  senha” no Android 10+).
+- **Prompt só em RESUMED**: não abre antes da Activity estar visível, evitando o
+  cancelamento imediato do diálogo biométrico.
+
+---
+
+## 10. O que mudou na v1.3.0
 
 - **Sessão não fica aberta ao sair do app**: ao ir para segundo plano, a sessão é
   bloqueada após 1,5 s. Ao voltar, é preciso desbloquear com **biometria** (Android 9+)
@@ -217,7 +232,7 @@ O script `tools/bump-app-version.ps1`:
 
 ---
 
-## 10. O que mudou na v1.1.0
+## 11. O que mudou na v1.1.0
 
 - **Login igual ao portal web**: fundo `africa-day-bg.jpg`, card areia com borda dourada,
   logo Sankofa em círculo, títulos "Portal Admin" / "Bodas de Esmeralda — M&L", rótulos

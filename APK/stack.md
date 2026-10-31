@@ -253,7 +253,7 @@ Colunas do export (paridade exata):
 |---|---|---|
 | **F0** Toolchain | ✅ | Android SDK instalado em `C:\Users\llopes\AppData\Local\Android\Sdk` (cmdline-tools 23.0, platform-tools 37.0.1, platforms;android-35/36, build-tools;35.0.0). Projeto Gradle criado em `APK/` (AGP 9.0.1, Gradle 9.1.0, Kotlin 2.3.20, Compose BOM 2026.03.01, Navigation3 1.0.1). Keystore de release: `C:\Bodas\backup\adminml-keystore\adminml-release.jks` (alias `adminml`, senha em `keystore-credentials.txt`). `keystore.properties` (gitignored) aponta para ele. `assembleDebug` e `assembleRelease` **verdes**; APK assinado em `APK/dist/AdminML-1.0.0.apk` (14,1 MB), certificado `CN=Admin M&L` SHA-256 `2d1dce3f162a8bf3073a6d26a018d6c0783db830f20f408970ca63de23863a65` |
 | **F1** Base do app | ✅ | Tema claro/escuro com a paleta exata do portal (`theme/Color.kt`), `AdminMLTheme` sem dynamic color, `SettingsStore` (DataStore: URL PocketBase, URL Gotify, tema), `SecureStore` (EncryptedSharedPreferences: token PB, client token Gotify, último id de mensagem), HomeScreen com bottom-nav (<600dp) / navigation-rail (>=600dp) e abas Convidados/Mural/Exportar/Sair, tela de Ajustes com URL do PocketBase, URL do Gotify, tema, teste de conexão e **vínculo do Gotify** (usuário/senha -> `POST /client` -> client token) |
-| **F2** Auth | ✅ | `SessionManager` (login, troca obrigatória de senha, logout, re-autenticação com a nova senha, mensagens de erro idênticas ao portal), `LoginScreen`/`LoginViewModel` com modo login/troca de senha; sessão em memória (sem restore), `SessionLock` (bloqueio em 1,5 s + logout em 15 min) e `Biometrics` (biometria Android 9+, fallback senha) |
+| **F2** Auth | ✅ | `SessionManager` (login, troca obrigatória de senha, logout, re-autenticação com a nova senha, mensagens de erro idênticas ao portal), `LoginScreen`/`LoginViewModel` com modo login/troca de senha; sessão em memória (sem restore), `SessionLock` (bloqueio em 1,5 s + logout em 15 min), `BiometricGate`/`AndroidBiometricGate` (status + prompt só em RESUMED) e preferência "Desbloquear com biometria" (padrão ligada) em Ajustes → Segurança |
 | **F6** Push (parte do app) | ✅ (falta teste real) | `GotifyClient` (cria client token, histórico `/message`, WebSocket `/stream` com `X-Gotify-Key` e `sinceId`), `GotifyService` (Foreground Service `specialUse`, notificação persistente, reconexão com backoff, dedupe por id, filtra título "RSVP"), `Notifications` (canais `rsvp_confirmacoes` HIGH e `monitoramento`, notificação com big text e deep link para a aba de convidados), `ic_stat_rsvp.xml` |
 | **F7** Servidor | ⏳ pendente | Hook `notify-rsvp.pb.js` ainda precisa ser corrigido (`onRecordAfterCreateRequest` -> `onRecordAfterCreateSuccess`) e o PocketBase reiniciado no EasyPanel |
 
@@ -589,7 +589,7 @@ Feedback do usuário no aparelho (Redmi Note 12S / Android 15) e o que foi feito
 Bônus de paridade: **indicador de página flutuante "3/5"** (`ui/components/PageIndicator.kt`),
 igual ao `showPageIndicator` do portal.
 
-### Testes (57 no total, todos verdes)
+### Testes (76 no total, todos verdes)
 
 | Suite | n | Cobre |
 |---|---|---|
@@ -598,7 +598,10 @@ igual ao `showPageIndicator` do portal.
 | `LoginViewModelTest` | 6 | e-mail lembrado (senha nunca), switch "Lembrar meu e-mail", validações de login/troca de senha |
 | `SessionManagerTest` | 10 | sessão nunca restaurada, lock/unlock, logout e ausência de senha no storage |
 | `SessionLockTest` | 4 | bloqueio em 1,5 s, logout em 15 min e cancelamento ao voltar |
-| `LockScreenTest` | 4 | tela de bloqueio, fallback de senha e saída da conta |
+| `LockScreenTest` | 10 | tela de bloqueio, biometria como padrão, retry/cancelar, fallback de senha e saída da conta |
+| `BiometricSettingsTest` | 4 | switch de biometria nos Ajustes (validar antes de salvar) |
+| `BiometricGateTest` | 4 | status do BiometricManager e contrato do gate sem exceções |
+| `SettingsStoreTest` | 5 | preferência persistente de biometria e demais ajustes |
 | `ExitConfirmationTest` | 4 | confirmação no Voltar/Sair e back em Ajustes |
 | `SwipeToPaginateTest` | 6 | cálculo da página de destino no swipe |
 | `GotifyUrlTest` | 6 | normalização de URL |

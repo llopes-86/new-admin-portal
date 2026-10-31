@@ -3,6 +3,32 @@
 Todas as mudanças do app Android. O versionamento segue SemVer e é controlado
 pelas tags ``apk/vX.Y.Z`` deste repositório.
 
+## 1.4.0 - 2026-10-31
+
+Biometria como padrão no desbloqueio: uma vez habilitada, o app pede digital/rosto
+em todo bloqueio e a senha só é usada se você escolher ou se o aparelho não permitir.
+
+### Adicionado
+- Ajuste **"Desbloquear com biometria"** em Ajustes → Segurança, com validação por
+  biometria antes de ativar e mensagem clara quando o aparelho não tem digital/rosto.
+- Botão **"Tentar biometria novamente"** e links **"Usar senha"** / **"Usar biometria"**
+  na tela de bloqueio.
+- Atalho **"Cadastrar biometria"** (Android 11+) quando ainda não há digital/rosto.
+
+### Corrigido
+- **Android 10+ ia direto para a senha**: o prompt era disparado antes da Activity
+  estar em RESUMED e qualquer cancelamento/erro trocava permanentemente para senha.
+  Agora o prompt só abre com a tela resumida, cancelar/falhar mantém o modo biometria
+  e a senha fica disponível como escolha explícita.
+- Status transitório de biometria (`HW_UNAVAILABLE`) não força mais a senha; a tela
+  permanece em biometria com a opção de tentar de novo.
+- Sem loop de prompt quando o próprio diálogo biométrico pausa/retoma a Activity e
+  sem tela em branco no retorno ao app.
+
+### Alterado
+- Biometria passa a ser oferecida automaticamente sempre que a preferência está
+  ligada (padrão ligado quando o aparelho suporta).
+
 ## 1.3.0 - 2026-10-31
 
 Sessão no padrão de app bancário: ao sair do app a sessão é bloqueada e só volta
