@@ -193,8 +193,9 @@ dependencies {
   implementation(libs.androidx.security.crypto)
   implementation(libs.androidx.datastore.preferences)
 
-  // Desbloqueio por biometria
+  // Desbloqueio por biometria (FragmentActivity + Fragment 1.9 para ActivityResult)
   implementation(libs.androidx.biometric)
+  implementation(libs.androidx.fragment)
 
   // JSON (modelos do PocketBase e mensagens do Gotify)
   implementation(libs.kotlinx.serialization.json)
