@@ -99,7 +99,12 @@ class GuestsStore(private val container: AppContainer) {
           }
         }
         .onFailure { err ->
-          _state.update { it.copy(loading = false, error = "Erro ao carregar convidados: ${err.message}") }
+          if (err.isUnauthorized()) {
+            container.session.logout()
+            _state.update { it.copy(loading = false, error = SESSION_EXPIRED_MESSAGE) }
+          } else {
+            _state.update { it.copy(loading = false, error = "Erro ao carregar convidados: ${err.message}") }
+          }
         }
     }
   }
@@ -132,7 +137,12 @@ class GuestsStore(private val container: AppContainer) {
           }
         }
         .onFailure { err ->
-          _state.update { it.copy(message = "Erro ao atualizar: ${err.message}") }
+          if (err.isUnauthorized()) {
+            container.session.logout()
+            _state.update { it.copy(message = SESSION_EXPIRED_MESSAGE) }
+          } else {
+            _state.update { it.copy(message = "Erro ao atualizar: ${err.message}") }
+          }
         }
     }
   }
@@ -144,6 +154,7 @@ class GuestsStore(private val container: AppContainer) {
       _state.update { it.copy(busy = true, message = "Confirmando ${pending.size} convidados…") }
       var success = 0
       var failed = 0
+      var sessionExpired = false
       pending.forEach { record ->
         runCatching { container.client.updateRsvpStatus(record.id, RsvpRecord.STATUS_CONFIRMADO) }
           .onSuccess {
@@ -156,17 +167,33 @@ class GuestsStore(private val container: AppContainer) {
               )
             }
           }
-          .onFailure { failed++ }
+          .onFailure { err ->
+            failed++
+            if (err.isUnauthorized()) {
+              sessionExpired = true
+              container.session.logout()
+            }
+          }
       }
       _state.update {
         it.copy(
           busy = false,
           message =
-            if (failed > 0) "$success confirmados, $failed falha(s)" else "$success convidados confirmados!",
+            when {
+              sessionExpired -> SESSION_EXPIRED_MESSAGE
+              failed > 0 -> "$success confirmados, $failed falha(s)"
+              else -> "$success convidados confirmados!"
+            },
         )
       }
     }
   }
 
   fun consumeMessage() = _state.update { it.copy(message = null) }
+
+  private fun Throwable.isUnauthorized() = this is ApiException && code == 401
+
+  private companion object {
+    const val SESSION_EXPIRED_MESSAGE = "Sessão expirada. Faça login novamente."
+  }
 }
