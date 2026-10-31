@@ -193,6 +193,9 @@ dependencies {
   implementation(libs.androidx.security.crypto)
   implementation(libs.androidx.datastore.preferences)
 
+  // Desbloqueio por biometria
+  implementation(libs.androidx.biometric)
+
   // JSON (modelos do PocketBase e mensagens do Gotify)
   implementation(libs.kotlinx.serialization.json)
 }

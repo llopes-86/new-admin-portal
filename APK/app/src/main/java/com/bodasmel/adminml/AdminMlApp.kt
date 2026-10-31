@@ -1,9 +1,12 @@
 package com.bodasmel.adminml
 
+import android.app.Activity
 import android.app.Application
+import android.os.Bundle
 import android.util.Log
 import com.bodasmel.adminml.core.AppSettings
 import com.bodasmel.adminml.core.SecureStore
+import com.bodasmel.adminml.core.SessionLock
 import com.bodasmel.adminml.core.SessionManager
 import com.bodasmel.adminml.core.SettingsStore
 import com.bodasmel.adminml.data.GuestsStore
@@ -55,6 +58,9 @@ class AppContainer(application: Application) {
 
   val session = SessionManager(secureStore, client)
 
+  /** Bloqueia a sessão em segundo plano e desloga após inatividade. */
+  val sessionLock = SessionLock(session, appScope)
+
   /** Eventos de novo RSVP originados pelo WebSocket do Gotify. */
   val rsvpEvents = MutableSharedFlow<GotifyMessage>(extraBufferCapacity = 16)
   val rsvpEventFlow: SharedFlow<GotifyMessage> = rsvpEvents
@@ -83,6 +89,8 @@ class AdminMlApp : Application() {
   var initError: String? = null
     private set
 
+  private var startedActivities = 0
+
   override fun onCreate() {
     super.onCreate()
 
@@ -97,9 +105,43 @@ class AdminMlApp : Application() {
         container = AppContainer(this)
         container.startBackgroundObservers()
       }
+      .onSuccess {
+        // A sessão nunca sobrevive ao processo: o app sempre começa no login.
+        container.secureStore.clearSession()
+        container.secureStore.clearLegacyRememberedPassword()
+        registerSessionLock()
+      }
       .onFailure { error ->
         initError = error.message ?: error.javaClass.simpleName
         Log.e("AdminML", "Falha ao inicializar o container", error)
       }
+  }
+
+  private fun registerSessionLock() {
+    registerActivityLifecycleCallbacks(
+      object : Application.ActivityLifecycleCallbacks {
+        override fun onActivityStarted(activity: Activity) {
+          startedActivities++
+          if (startedActivities == 1) container.sessionLock.onForeground()
+        }
+
+        override fun onActivityStopped(activity: Activity) {
+          startedActivities = (startedActivities - 1).coerceAtLeast(0)
+          if (startedActivities == 0 && !activity.isChangingConfigurations) {
+            container.sessionLock.onBackground()
+          }
+        }
+
+        override fun onActivityCreated(activity: Activity, savedInstanceState: Bundle?) {}
+
+        override fun onActivityResumed(activity: Activity) {}
+
+        override fun onActivityPaused(activity: Activity) {}
+
+        override fun onActivitySaveInstanceState(activity: Activity, outState: Bundle) {}
+
+        override fun onActivityDestroyed(activity: Activity) {}
+      }
+    )
   }
 }

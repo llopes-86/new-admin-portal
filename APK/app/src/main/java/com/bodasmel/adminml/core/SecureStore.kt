@@ -55,19 +55,19 @@ class SecureStore(context: Context) {
     get() = prefs.getString(KEY_REMEMBER_EMAIL, null)
     set(value) = prefs.edit().putString(KEY_REMEMBER_EMAIL, value).apply()
 
-  /** Senha do último login (criptografada no Keystore). */
-  var rememberedPassword: String?
-    get() = prefs.getString(KEY_REMEMBER_PASSWORD, null)
-    set(value) = prefs.edit().putString(KEY_REMEMBER_PASSWORD, value).apply()
-
-  /** Se o app deve lembrar e-mail e senha ("Lembrar-me"). */
+  /** Se o app deve lembrar o e-mail ("Lembrar meu e-mail"). */
   var rememberCredentials: Boolean
     get() = prefs.getBoolean(KEY_REMEMBER_ENABLED, true)
     set(value) = prefs.edit().putBoolean(KEY_REMEMBER_ENABLED, value).apply()
 
-  /** Apaga somente as credenciais lembradas (mantém a sessão). */
+  /** Apaga o e-mail lembrado (mantém a sessão). */
   fun clearRememberedCredentials() {
-    prefs.edit().remove(KEY_REMEMBER_EMAIL).remove(KEY_REMEMBER_PASSWORD).apply()
+    prefs.edit().remove(KEY_REMEMBER_EMAIL).apply()
+  }
+
+  /** Remove a senha gravada por versões antigas do app. */
+  fun clearLegacyRememberedPassword() {
+    prefs.edit().remove(KEY_REMEMBER_PASSWORD).apply()
   }
 
   fun clearSession() {

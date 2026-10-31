@@ -34,9 +34,8 @@ class LoginViewModel(private val session: SessionManager) : ViewModel() {
   private val _uiState =
     MutableStateFlow(
       LoginUiState(
-        // Pré-preenche com o que ficou salvo da última vez
+        // Só o e-mail fica lembrado; a senha é sempre digitada.
         email = session.rememberedEmail.orEmpty(),
-        password = session.rememberedPassword.orEmpty(),
         rememberCredentials = session.rememberCredentials,
       )
     )

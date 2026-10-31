@@ -24,24 +24,22 @@ class LoginViewModelTest {
     ApplicationProvider.getApplicationContext<AdminMlApp>().container
 
   @Test
-  fun `preenche e-mail e senha lembrados`() {
+  fun `preenche apenas o e-mail lembrado`() {
     val app = container()
     app.secureStore.rememberedEmail = "admin@bodasmel.com.br"
-    app.secureStore.rememberedPassword = "senha-secreta"
 
     val viewModel = LoginViewModel(app.session)
     val state = viewModel.uiState.value
 
     assertEquals("admin@bodasmel.com.br", state.email)
-    assertEquals("senha-secreta", state.password)
+    assertEquals("", state.password)
     assertTrue(state.rememberCredentials)
   }
 
   @Test
-  fun `desligar o lembrar-me apaga as credenciais guardadas`() {
+  fun `desligar o lembrar-me apaga o e-mail guardado`() {
     val app = container()
     app.secureStore.rememberedEmail = "admin@bodasmel.com.br"
-    app.secureStore.rememberedPassword = "senha-secreta"
     app.secureStore.rememberCredentials = true
 
     val viewModel = LoginViewModel(app.session)
@@ -49,7 +47,6 @@ class LoginViewModelTest {
 
     assertFalse(viewModel.uiState.value.rememberCredentials)
     assertNull(app.secureStore.rememberedEmail)
-    assertNull(app.secureStore.rememberedPassword)
   }
 
   @Test

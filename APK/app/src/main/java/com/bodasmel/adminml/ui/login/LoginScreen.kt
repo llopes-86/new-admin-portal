@@ -342,7 +342,7 @@ private fun LoginContent(
           ),
       )
       Text(
-        "Lembrar-me",
+        "Lembrar meu e-mail",
         fontFamily = InterFamily,
         fontSize = 13.sp,
         color = PortalColors.Brown,

@@ -1,5 +1,6 @@
 package com.bodasmel.adminml.data
 
+import com.bodasmel.adminml.core.AuthApi
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.withContext
 import kotlinx.serialization.json.Json
@@ -25,7 +26,7 @@ import java.util.concurrent.TimeUnit
 class PocketBaseClient(
   private val baseUrlProvider: () -> String,
   private val tokenProvider: () -> String?,
-) {
+) : AuthApi {
 
   private val json = Json {
     ignoreUnknownKeys = true
@@ -70,7 +71,7 @@ class PocketBaseClient(
 
   // ---------------------------------------------------------------- autenticação
 
-  suspend fun authWithPassword(email: String, password: String): AuthResponse {
+  override suspend fun authWithPassword(email: String, password: String): AuthResponse {
     val payload = buildJsonObject {
       put("identity", email.trim())
       put("password", password)
@@ -86,7 +87,7 @@ class PocketBaseClient(
   }
 
   /** Troca de senha + limpeza de `must_change_password` (paridade com o portal). */
-  suspend fun changePassword(
+  override suspend fun changePassword(
     userId: String,
     oldPassword: String,
     newPassword: String,

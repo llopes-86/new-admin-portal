@@ -265,7 +265,7 @@ fun SettingsScreen(container: AppContainer, onBack: () -> Unit) {
       }
       if (container.secureStore.rememberedEmail != null) {
         Text(
-          "Credenciais lembradas: ${container.secureStore.rememberedEmail}",
+          "E-mail lembrado: ${container.secureStore.rememberedEmail}",
           style = MaterialTheme.typography.bodySmall,
           color = MaterialTheme.colorScheme.onSurfaceVariant,
         )

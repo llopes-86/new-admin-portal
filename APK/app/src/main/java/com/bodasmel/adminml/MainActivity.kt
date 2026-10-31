@@ -5,10 +5,10 @@ import android.content.Intent
 import android.content.pm.PackageManager
 import android.os.Build
 import android.os.Bundle
-import androidx.activity.ComponentActivity
 import androidx.activity.compose.setContent
 import androidx.activity.enableEdgeToEdge
 import androidx.activity.result.contract.ActivityResultContracts
+import androidx.fragment.app.FragmentActivity
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.fillMaxSize
@@ -32,9 +32,10 @@ import com.bodasmel.adminml.core.AuthState
 import com.bodasmel.adminml.core.ThemeMode
 import com.bodasmel.adminml.theme.AdminMLTheme
 import com.bodasmel.adminml.ui.home.HomeScreen
+import com.bodasmel.adminml.ui.lock.LockScreen
 import com.bodasmel.adminml.ui.login.LoginScreen
 
-class MainActivity : ComponentActivity() {
+class MainActivity : FragmentActivity() {
 
   /** Usado pela notificação para abrir direto na aba de convidados. */
   companion object {
@@ -68,6 +69,7 @@ class MainActivity : ComponentActivity() {
         Surface(modifier = Modifier.fillMaxSize(), color = MaterialTheme.colorScheme.background) {
           when (authState) {
             is AuthState.SignedOut, is AuthState.NeedsPasswordChange -> LoginScreen(container.session)
+            is AuthState.Locked -> LockScreen(session = container.session)
             is AuthState.SignedIn ->
               HomeScreen(
                 container = container,
