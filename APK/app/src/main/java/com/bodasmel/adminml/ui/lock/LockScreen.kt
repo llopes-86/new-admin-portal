@@ -3,6 +3,10 @@ package com.bodasmel.adminml.ui.lock
 import android.app.Activity
 import android.content.Context
 import android.content.ContextWrapper
+import android.content.Intent
+import android.os.Build
+import android.provider.Settings
+import androidx.biometric.BiometricManager
 import androidx.compose.foundation.Image
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
@@ -28,6 +32,7 @@ import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.DisposableEffect
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
@@ -49,6 +54,10 @@ import androidx.compose.ui.text.input.KeyboardType
 import androidx.compose.ui.text.input.PasswordVisualTransformation
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
+import androidx.lifecycle.Lifecycle
+import androidx.lifecycle.LifecycleEventObserver
+import androidx.lifecycle.compose.LocalLifecycleOwner
+import androidx.lifecycle.repeatOnLifecycle
 import com.bodasmel.adminml.R
 import com.bodasmel.adminml.core.AndroidBiometricGate
 import com.bodasmel.adminml.core.BiometricGate
@@ -63,8 +72,10 @@ import kotlinx.coroutines.launch
 
 /**
  * Tela de bloqueio exibida ao voltar ao app depois de sair.
- * Tenta a biometria na primeira composição e cai para a senha quando o sensor
- * não existe, é cancelado ou o desbloqueio falha.
+ *
+ * A biometria é oferecida automaticamente apenas quando a Activity já está em
+ * RESUMED. Cancelar ou falhar NÃO troca para a senha: o usuário permanece no
+ * modo biometria com a opção de tentar de novo (ou escolher a senha).
  */
 @Composable
 fun LockScreen(
@@ -75,35 +86,94 @@ fun LockScreen(
 ) {
   val context = LocalContext.current
   val activity = remember(context) { context.findActivity() }
-  val biometricStatus = remember(context, gate) { gate.status(context) }
-  val biometricsAvailable = biometricStatus == BiometricStatus.AVAILABLE
-
+  val lifecycleOwner = LocalLifecycleOwner.current
   val user = session.currentUser
   val scope = rememberCoroutineScope()
-  var passwordMode by rememberSaveable { mutableStateOf(!biometricEnabled || !biometricsAvailable) }
-  var password by rememberSaveable { mutableStateOf("") }
-  var error by remember { mutableStateOf<String?>(null) }
-  var busy by remember { mutableStateOf(false) }
 
-  LaunchedEffect(biometricEnabled, biometricsAvailable, biometricStatus) {
-    if (!biometricEnabled || !biometricsAvailable) {
-      passwordMode = true
-      return@LaunchedEffect
+  var status by remember(context, gate) { mutableStateOf(gate.status(context)) }
+  var usePassword by rememberSaveable { mutableStateOf(false) }
+  var password by rememberSaveable { mutableStateOf("") }
+  var passwordError by remember { mutableStateOf<String?>(null) }
+  var biometricHint by remember { mutableStateOf<String?>(null) }
+  var busy by remember { mutableStateOf(false) }
+  var prompting by remember { mutableStateOf(false) }
+  var autoPromptDone by remember { mutableStateOf(false) }
+
+  val biometricMode =
+    biometricEnabled &&
+      !usePassword &&
+      (status == BiometricStatus.AVAILABLE || status == BiometricStatus.UNAVAILABLE)
+
+  fun requestBiometrics() {
+    if (prompting) return
+    val current = gate.status(context)
+    status = current
+    when (current) {
+      BiometricStatus.AVAILABLE -> Unit
+      BiometricStatus.UNAVAILABLE -> {
+        biometricHint = "Biometria indisponível agora. Tente novamente."
+        return
+      }
+      else -> {
+        usePassword = true
+        biometricHint = null
+        return
+      }
     }
     val host = activity
     if (host == null) {
-      passwordMode = true
-      return@LaunchedEffect
+      usePassword = true
+      passwordError = "Não foi possível abrir a biometria. Use a senha."
+      return
     }
+    biometricHint = null
+    prompting = true
     gate.authenticate(
       activity = host,
-      onSuccess = { if (!session.unlockWithBiometrics()) passwordMode = true },
-      onError = {
-        error = it
-        passwordMode = true
+      title = "Desbloquear Admin M&L",
+      subtitle = user?.email,
+      negativeButton = "Cancelar",
+      onSuccess = {
+        prompting = false
+        if (!session.unlockWithBiometrics()) {
+          usePassword = true
+          passwordError = "Sessão expirada. Entre com a senha."
+        }
       },
-      onCancel = { passwordMode = true },
+      onError = {
+        prompting = false
+        biometricHint = it
+      },
+      onCancel = { prompting = false },
     )
+  }
+
+  // Recheca o suporte biométrico sempre que a tela volta a ficar ativa
+  // (o usuário pode ter cadastrado uma digital nos ajustes do aparelho).
+  LaunchedEffect(gate, context) {
+    lifecycleOwner.lifecycle.repeatOnLifecycle(Lifecycle.State.RESUMED) {
+      status = gate.status(context)
+    }
+  }
+
+  // Só dispara o prompt quando a Activity já está em RESUMED.
+  LaunchedEffect(biometricMode, biometricEnabled, status) {
+    if (!biometricMode || status != BiometricStatus.AVAILABLE) return@LaunchedEffect
+    lifecycleOwner.lifecycle.repeatOnLifecycle(Lifecycle.State.RESUMED) {
+      if (!autoPromptDone && !usePassword) {
+        autoPromptDone = true
+        requestBiometrics()
+      }
+    }
+  }
+
+  // Ao voltar do segundo plano, permite um novo prompt automático.
+  DisposableEffect(lifecycleOwner) {
+    val observer = LifecycleEventObserver { _, event ->
+      if (event == Lifecycle.Event.ON_STOP) autoPromptDone = false
+    }
+    lifecycleOwner.lifecycle.addObserver(observer)
+    onDispose { lifecycleOwner.lifecycle.removeObserver(observer) }
   }
 
   Box(modifier = modifier.fillMaxSize()) {
@@ -171,7 +241,41 @@ fun LockScreen(
 
         Spacer(Modifier.height(24.dp))
 
-        if (passwordMode) {
+        if (biometricMode) {
+          if (prompting) {
+            CircularProgressIndicator(modifier = Modifier.size(36.dp), color = PortalColors.Gold)
+          }
+          Text(
+            text =
+              biometricHint
+                ?: if (status == BiometricStatus.UNAVAILABLE) {
+                  "Biometria indisponível agora. Tente novamente."
+                } else {
+                  "Confirme sua biometria para continuar."
+                },
+            modifier = Modifier.padding(top = if (prompting) 12.dp else 0.dp),
+            fontFamily = InterFamily,
+            fontSize = 13.sp,
+            color = PortalColors.Brown,
+          )
+          TextButton(onClick = { requestBiometrics() }, enabled = !prompting) {
+            Text(
+              text = "Tentar biometria novamente",
+              fontFamily = InterFamily,
+              fontSize = 13.sp,
+              fontWeight = FontWeight.SemiBold,
+              color = PortalColors.Gold,
+            )
+          }
+          TextButton(onClick = { usePassword = true }) {
+            Text(
+              text = "Usar senha",
+              fontFamily = InterFamily,
+              fontSize = 13.sp,
+              color = PortalColors.Brown,
+            )
+          }
+        } else {
           Text(
             text = "Senha",
             modifier = Modifier.fillMaxWidth().padding(bottom = 6.dp),
@@ -184,7 +288,7 @@ fun LockScreen(
             value = password,
             onValueChange = {
               password = it
-              error = null
+              passwordError = null
             },
             placeholder = "Sua senha",
             modifier = Modifier.fillMaxWidth(),
@@ -194,7 +298,7 @@ fun LockScreen(
               KeyboardOptions(keyboardType = KeyboardType.Password, imeAction = ImeAction.Done),
           )
 
-          error?.let {
+          passwordError?.let {
             Text(
               text = it,
               modifier = Modifier.fillMaxWidth().padding(top = 8.dp),
@@ -204,13 +308,36 @@ fun LockScreen(
             )
           }
 
+          if (biometricEnabled && status != BiometricStatus.AVAILABLE) {
+            biometricStatusMessage(status)?.let {
+              Text(
+                text = it,
+                modifier = Modifier.fillMaxWidth().padding(top = 8.dp),
+                fontFamily = InterFamily,
+                fontSize = 13.sp,
+                color = PortalColors.Brown,
+              )
+            }
+            if (status == BiometricStatus.NONE_ENROLLED) {
+              TextButton(onClick = { context.openBiometricEnrollment() }) {
+                Text(
+                  text = "Cadastrar biometria",
+                  fontFamily = InterFamily,
+                  fontSize = 13.sp,
+                  fontWeight = FontWeight.SemiBold,
+                  color = PortalColors.Gold,
+                )
+              }
+            }
+          }
+
           Button(
             onClick = {
               busy = true
               scope.launch {
                 when (val result = session.unlockWithPassword(password)) {
                   is UnlockResult.Success -> password = ""
-                  is UnlockResult.Error -> error = result.message
+                  is UnlockResult.Error -> passwordError = result.message
                 }
                 busy = false
               }
@@ -232,23 +359,23 @@ fun LockScreen(
               Text("Desbloquear", fontFamily = InterFamily, fontSize = 15.sp, fontWeight = FontWeight.SemiBold)
             }
           }
-        } else {
-          CircularProgressIndicator(modifier = Modifier.size(36.dp), color = PortalColors.Gold)
-          Text(
-            text = "Confirme sua biometria para continuar.",
-            modifier = Modifier.padding(top = 12.dp),
-            fontFamily = InterFamily,
-            fontSize = 13.sp,
-            color = PortalColors.Brown,
-          )
-          TextButton(onClick = { passwordMode = true }) {
-            Text(
-              text = "Entrar com senha",
-              fontFamily = InterFamily,
-              fontSize = 13.sp,
-              fontWeight = FontWeight.SemiBold,
-              color = PortalColors.Gold,
-            )
+
+          if (biometricEnabled && status == BiometricStatus.AVAILABLE) {
+            TextButton(
+              onClick = {
+                usePassword = false
+                autoPromptDone = true
+                requestBiometrics()
+              }
+            ) {
+              Text(
+                text = "Usar biometria",
+                fontFamily = InterFamily,
+                fontSize = 13.sp,
+                fontWeight = FontWeight.SemiBold,
+                color = PortalColors.Gold,
+              )
+            }
           }
         }
 
@@ -263,6 +390,31 @@ fun LockScreen(
       }
     }
   }
+}
+
+private fun biometricStatusMessage(status: BiometricStatus): String? =
+  when (status) {
+    BiometricStatus.AVAILABLE -> null
+    BiometricStatus.NONE_ENROLLED ->
+      "Nenhuma biometria cadastrada neste aparelho. Cadastre uma digital ou rosto para desbloquear sem digitar a senha."
+    BiometricStatus.NO_HARDWARE -> "Este aparelho não tem leitor biométrico. Use a senha."
+    BiometricStatus.UNSUPPORTED -> "A biometria exige Android 9 ou superior. Use a senha."
+    BiometricStatus.UNAVAILABLE -> "Biometria indisponível agora. Tente novamente."
+  }
+
+private fun Context.openBiometricEnrollment() {
+  val intent =
+    if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.R) {
+      Intent(Settings.ACTION_BIOMETRIC_ENROLL).apply {
+        putExtra(
+          Settings.EXTRA_BIOMETRIC_AUTHENTICATORS_ALLOWED,
+          BiometricManager.Authenticators.BIOMETRIC_WEAK,
+        )
+      }
+    } else {
+      Intent(Settings.ACTION_SECURITY_SETTINGS)
+    }
+  runCatching { startActivity(intent) }
 }
 
 private tailrec fun Context.findActivity(): Activity? =

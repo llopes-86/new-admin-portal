@@ -1,5 +1,8 @@
 package com.bodasmel.adminml.ui.settings
 
+import android.app.Activity
+import android.content.Context
+import android.content.ContextWrapper
 import androidx.activity.compose.BackHandler
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
@@ -22,22 +25,31 @@ import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.OutlinedTextField
 import androidx.compose.material3.Scaffold
+import androidx.compose.material3.Switch
 import androidx.compose.material3.Text
 import androidx.compose.material3.TopAppBar
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.runtime.setValue
+import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.text.input.KeyboardType
 import androidx.compose.ui.text.input.PasswordVisualTransformation
 import androidx.compose.ui.unit.dp
+import androidx.lifecycle.Lifecycle
+import androidx.lifecycle.compose.LocalLifecycleOwner
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
+import androidx.lifecycle.repeatOnLifecycle
 import com.bodasmel.adminml.AppContainer
 import com.bodasmel.adminml.BuildConfig
+import com.bodasmel.adminml.core.AndroidBiometricGate
+import com.bodasmel.adminml.core.BiometricGate
+import com.bodasmel.adminml.core.BiometricStatus
 import com.bodasmel.adminml.core.ThemeMode
 import com.bodasmel.adminml.push.GotifyClient
 import com.bodasmel.adminml.push.GotifyDiagnosis
@@ -47,9 +59,15 @@ import kotlinx.coroutines.launch
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
-fun SettingsScreen(container: AppContainer, onBack: () -> Unit) {
+fun SettingsScreen(
+  container: AppContainer,
+  onBack: () -> Unit,
+  biometricGate: BiometricGate = AndroidBiometricGate,
+) {
   val settings by container.settings.collectAsStateWithLifecycle()
   val scope = rememberCoroutineScope()
+  val lifecycleOwner = LocalLifecycleOwner.current
+  val context = LocalContext.current
 
   var pbUrl by remember(settings.pbBaseUrl) { mutableStateOf(settings.pbBaseUrl) }
   var gotifyUrl by remember(settings.gotifyUrl) { mutableStateOf(settings.gotifyUrl) }
@@ -57,7 +75,14 @@ fun SettingsScreen(container: AppContainer, onBack: () -> Unit) {
   var gotifyPassword by remember { mutableStateOf("") }
   var linking by remember { mutableStateOf(false) }
   var status by remember { mutableStateOf<String?>(null) }
-  val context = LocalContext.current
+  var biometricStatus by remember(biometricGate) { mutableStateOf(biometricGate.status(context)) }
+  var biometricMessage by remember { mutableStateOf<String?>(null) }
+
+  LaunchedEffect(biometricGate, context) {
+    lifecycleOwner.lifecycle.repeatOnLifecycle(Lifecycle.State.RESUMED) {
+      biometricStatus = biometricGate.status(context)
+    }
+  }
 
   BackHandler { onBack() }
 
@@ -181,6 +206,80 @@ fun SettingsScreen(container: AppContainer, onBack: () -> Unit) {
 
       Spacer(Modifier.height(8.dp))
       Text(
+        "Segurança",
+        style = MaterialTheme.typography.titleMedium,
+        color = MaterialTheme.colorScheme.onSurface,
+      )
+      Row(
+        modifier = Modifier.fillMaxWidth(),
+        horizontalArrangement = Arrangement.spacedBy(12.dp),
+        verticalAlignment = Alignment.CenterVertically,
+      ) {
+        Column(modifier = Modifier.weight(1f)) {
+          Text("Desbloquear com biometria", style = MaterialTheme.typography.bodyLarge)
+          Text(
+            text =
+              biometricStatusMessage(biometricStatus)
+                ?: "Ao voltar ao app, use a biometria em vez de digitar a senha.",
+            style = MaterialTheme.typography.bodySmall,
+            color = MaterialTheme.colorScheme.onSurfaceVariant,
+          )
+        }
+        Switch(
+          checked = settings.biometricUnlockEnabled,
+          enabled = biometricStatus == BiometricStatus.AVAILABLE,
+          onCheckedChange = { enable ->
+            if (!enable) {
+              scope.launch {
+                container.settingsStore.setBiometricUnlockEnabled(false)
+                biometricMessage = "Desbloqueio por biometria desativado."
+              }
+            } else {
+              val available = biometricGate.status(context)
+              biometricStatus = available
+              val host = context.findActivity()
+              when {
+                available != BiometricStatus.AVAILABLE -> {
+                  biometricMessage = biometricStatusMessage(available)
+                }
+                host == null -> {
+                  biometricMessage = "Não foi possível abrir a biometria. Tente novamente."
+                }
+                else -> {
+                  biometricMessage = null
+                  biometricGate.authenticate(
+                    activity = host,
+                    title = "Ativar desbloqueio por biometria",
+                    subtitle = "Confirme sua biometria para desbloquear o app sem senha.",
+                    negativeButton = "Cancelar",
+                    onSuccess = {
+                      scope.launch {
+                        container.settingsStore.setBiometricUnlockEnabled(true)
+                        biometricMessage = "Desbloqueio por biometria ativado."
+                      }
+                    },
+                    onError = { biometricMessage = it },
+                    onCancel = {
+                      biometricMessage =
+                        "Biometria não confirmada. O desbloqueio por biometria continua desativado."
+                    },
+                  )
+                }
+              }
+            }
+          },
+        )
+      }
+      biometricMessage?.let {
+        Text(
+          it,
+          style = MaterialTheme.typography.bodySmall,
+          color = MaterialTheme.colorScheme.onSurfaceVariant,
+        )
+      }
+
+      Spacer(Modifier.height(8.dp))
+      Text(
         "Notificações",
         style = MaterialTheme.typography.titleMedium,
         color = MaterialTheme.colorScheme.onSurface,
@@ -290,3 +389,20 @@ fun SettingsScreen(container: AppContainer, onBack: () -> Unit) {
     }
   }
 }
+
+private fun biometricStatusMessage(status: BiometricStatus): String? =
+  when (status) {
+    BiometricStatus.AVAILABLE -> null
+    BiometricStatus.NONE_ENROLLED ->
+      "Nenhuma biometria cadastrada neste aparelho. Cadastre uma digital ou rosto nos ajustes do sistema."
+    BiometricStatus.NO_HARDWARE -> "Este aparelho não tem leitor biométrico."
+    BiometricStatus.UNSUPPORTED -> "A biometria exige Android 9 ou superior."
+    BiometricStatus.UNAVAILABLE -> "Biometria indisponível agora. Tente novamente mais tarde."
+  }
+
+private tailrec fun Context.findActivity(): Activity? =
+  when (this) {
+    is Activity -> this
+    is ContextWrapper -> baseContext.findActivity()
+    else -> null
+  }
