@@ -85,7 +85,12 @@ class MessagesStore(private val container: AppContainer) {
           _state.update { it.copy(loading = false, error = null, all = records, currentPage = 1) }
         }
         .onFailure { err ->
-          _state.update { it.copy(loading = false, error = "Erro ao carregar mensagens: ${err.message}") }
+          if (err.isUnauthorized()) {
+            container.session.logout()
+            _state.update { it.copy(loading = false, error = SESSION_EXPIRED_MESSAGE) }
+          } else {
+            _state.update { it.copy(loading = false, error = "Erro ao carregar mensagens: ${err.message}") }
+          }
         }
     }
   }
@@ -112,7 +117,12 @@ class MessagesStore(private val container: AppContainer) {
           }
         }
         .onFailure { err ->
-          _state.update { it.copy(message = "Erro ao atualizar: ${err.message}") }
+          if (err.isUnauthorized()) {
+            container.session.logout()
+            _state.update { it.copy(message = SESSION_EXPIRED_MESSAGE) }
+          } else {
+            _state.update { it.copy(message = "Erro ao atualizar: ${err.message}") }
+          }
         }
     }
   }
@@ -124,6 +134,7 @@ class MessagesStore(private val container: AppContainer) {
       _state.update { it.copy(busy = true, message = "Aprovando ${pending.size} mensagens…") }
       var success = 0
       var failed = 0
+      var sessionExpired = false
       pending.forEach { record ->
         runCatching { container.client.updateMessageStatus(record.id, MessageRecord.STATUS_APROVADO) }
           .onSuccess {
@@ -136,16 +147,33 @@ class MessagesStore(private val container: AppContainer) {
               )
             }
           }
-          .onFailure { failed++ }
+          .onFailure { err ->
+            failed++
+            if (err.isUnauthorized()) {
+              sessionExpired = true
+              container.session.logout()
+            }
+          }
       }
       _state.update {
         it.copy(
           busy = false,
-          message = if (failed > 0) "$success aprovadas, $failed falha(s)" else "$success mensagens aprovadas!",
+          message =
+            when {
+              sessionExpired -> SESSION_EXPIRED_MESSAGE
+              failed > 0 -> "$success aprovadas, $failed falha(s)"
+              else -> "$success mensagens aprovadas!"
+            },
         )
       }
     }
   }
 
   fun consumeMessage() = _state.update { it.copy(message = null) }
+
+  private fun Throwable.isUnauthorized() = this is ApiException && code == 401
+
+  private companion object {
+    const val SESSION_EXPIRED_MESSAGE = "Sessão expirada. Faça login novamente."
+  }
 }
