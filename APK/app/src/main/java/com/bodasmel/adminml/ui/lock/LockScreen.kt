@@ -38,6 +38,7 @@ import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.rememberCoroutineScope
+import androidx.compose.runtime.rememberUpdatedState
 import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
@@ -167,10 +168,15 @@ fun LockScreen(
     }
   }
 
-  // Ao voltar do segundo plano, permite um novo prompt automático.
+  // Ao voltar do segundo plano, permite um novo prompt automático — mas não
+  // quando a pausa foi causada pelo próprio BiometricPrompt (evita loop).
+  val promptingState = rememberUpdatedState(prompting)
   DisposableEffect(lifecycleOwner) {
     val observer = LifecycleEventObserver { _, event ->
-      if (event == Lifecycle.Event.ON_STOP) autoPromptDone = false
+      if (event == Lifecycle.Event.ON_STOP) {
+        if (!promptingState.value) autoPromptDone = false
+        prompting = false
+      }
     }
     lifecycleOwner.lifecycle.addObserver(observer)
     onDispose { lifecycleOwner.lifecycle.removeObserver(observer) }

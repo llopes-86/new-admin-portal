@@ -28,9 +28,7 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.core.content.ContextCompat
 import androidx.lifecycle.Lifecycle
-import androidx.lifecycle.compose.LocalLifecycleOwner
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
-import androidx.lifecycle.compose.currentStateAsState
 import com.bodasmel.adminml.core.AuthState
 import com.bodasmel.adminml.core.ThemeMode
 import com.bodasmel.adminml.theme.AdminMLTheme
@@ -70,21 +68,16 @@ class MainActivity : FragmentActivity() {
         container.session.state.collectAsStateWithLifecycle(
           minActiveState = Lifecycle.State.RESUMED,
         )
-      val lifecycleState by LocalLifecycleOwner.current.lifecycle.currentStateAsState()
 
       AdminMLTheme(darkTheme = settings.themeMode == ThemeMode.DARK) {
         Surface(modifier = Modifier.fillMaxSize(), color = MaterialTheme.colorScheme.background) {
           when (authState) {
             is AuthState.SignedOut, is AuthState.NeedsPasswordChange -> LoginScreen(container.session)
-            is AuthState.Locked -> {
-              // Só monta a LockScreen (e dispara o prompt) com a Activity já resumida.
-              if (lifecycleState.isAtLeast(Lifecycle.State.RESUMED)) {
-                LockScreen(
-                  session = container.session,
-                  biometricEnabled = settings.biometricUnlockEnabled,
-                )
-              }
-            }
+            is AuthState.Locked ->
+              LockScreen(
+                session = container.session,
+                biometricEnabled = settings.biometricUnlockEnabled,
+              )
             is AuthState.SignedIn ->
               HomeScreen(
                 container = container,
