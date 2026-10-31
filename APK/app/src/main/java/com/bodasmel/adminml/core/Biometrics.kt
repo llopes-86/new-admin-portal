@@ -51,7 +51,9 @@ object AndroidBiometricGate : BiometricGate {
       BiometricManager.BIOMETRIC_ERROR_NO_HARDWARE -> BiometricStatus.NO_HARDWARE
       BiometricManager.BIOMETRIC_ERROR_NONE_ENROLLED -> BiometricStatus.NONE_ENROLLED
       BiometricManager.BIOMETRIC_ERROR_HW_UNAVAILABLE -> BiometricStatus.UNAVAILABLE
-      BiometricManager.BIOMETRIC_ERROR_UNSUPPORTED -> BiometricStatus.UNSUPPORTED
+      BiometricManager.BIOMETRIC_ERROR_UNSUPPORTED,
+      BiometricManager.BIOMETRIC_ERROR_SECURITY_UPDATE_REQUIRED -> BiometricStatus.UNSUPPORTED
+      BiometricManager.BIOMETRIC_STATUS_UNKNOWN -> BiometricStatus.UNAVAILABLE
       else -> BiometricStatus.UNAVAILABLE
     }
   }
@@ -68,6 +70,10 @@ object AndroidBiometricGate : BiometricGate {
     val fragmentActivity = activity as? FragmentActivity
     if (fragmentActivity == null) {
       onError("Este aparelho não oferece suporte à biometria. Use a senha.")
+      return
+    }
+    if (fragmentActivity.isFinishing || fragmentActivity.isDestroyed) {
+      onError("Não foi possível iniciar a biometria. Use a senha.")
       return
     }
     when (status(fragmentActivity)) {
@@ -96,15 +102,15 @@ object AndroidBiometricGate : BiometricGate {
             override fun onAuthenticationSucceeded(
               result: BiometricPrompt.AuthenticationResult
             ) {
-              onSuccess()
+              runCatching { onSuccess() }
             }
 
             override fun onAuthenticationError(errorCode: Int, errString: CharSequence) {
               when (errorCode) {
                 BiometricPrompt.ERROR_NEGATIVE_BUTTON,
                 BiometricPrompt.ERROR_USER_CANCELED,
-                BiometricPrompt.ERROR_CANCELED -> onCancel()
-                else -> onError(friendlyMessage(errorCode))
+                BiometricPrompt.ERROR_CANCELED -> runCatching { onCancel() }
+                else -> runCatching { onError(friendlyMessage(errorCode)) }
               }
             }
           }
