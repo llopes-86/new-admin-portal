@@ -1,5 +1,6 @@
 package com.bodasmel.adminml.ui.settings
 
+import androidx.activity.compose.BackHandler
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
@@ -57,6 +58,8 @@ fun SettingsScreen(container: AppContainer, onBack: () -> Unit) {
   var linking by remember { mutableStateOf(false) }
   var status by remember { mutableStateOf<String?>(null) }
   val context = LocalContext.current
+
+  BackHandler { onBack() }
 
   Scaffold(
     topBar = {

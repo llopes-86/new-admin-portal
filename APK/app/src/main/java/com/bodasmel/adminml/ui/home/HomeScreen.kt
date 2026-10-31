@@ -1,5 +1,9 @@
 package com.bodasmel.adminml.ui.home
 
+import android.app.Activity
+import android.content.Context
+import android.content.ContextWrapper
+import androidx.activity.compose.BackHandler
 import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
@@ -46,9 +50,11 @@ import androidx.compose.ui.unit.sp
 import androidx.compose.ui.platform.LocalConfiguration
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import com.bodasmel.adminml.AppContainer
+import com.bodasmel.adminml.core.SessionManager
 import com.bodasmel.adminml.core.ThemeMode
 import com.bodasmel.adminml.push.GotifyService
 import com.bodasmel.adminml.push.Notifications
+import com.bodasmel.adminml.ui.components.ExitDialog
 import com.bodasmel.adminml.ui.export.ExportDialog
 import com.bodasmel.adminml.ui.guests.GuestsScreen
 import com.bodasmel.adminml.ui.messages.MessagesScreen
@@ -66,17 +72,19 @@ fun HomeScreen(
   container: AppContainer,
   openGuests: Boolean = false,
   onRequestNotificationPermission: () -> Unit,
+  session: SessionManager = container.session,
 ) {
   var tab by rememberSaveable { mutableStateOf(HomeTab.GUESTS) }
   var showSettings by rememberSaveable { mutableStateOf(false) }
   var showExport by rememberSaveable { mutableStateOf(false) }
+  var showExitDialog by rememberSaveable { mutableStateOf(false) }
+  var showLogoutDialog by rememberSaveable { mutableStateOf(false) }
 
   LaunchedEffect(openGuests) {
     if (openGuests) tab = HomeTab.GUESTS
   }
 
   val settings by container.settings.collectAsStateWithLifecycle()
-  val session = container.session
   val user = session.currentUser
   val dark = settings.themeMode == ThemeMode.DARK
 
@@ -88,10 +96,13 @@ fun HomeScreen(
     return
   }
 
+  BackHandler { showExitDialog = true }
+
   val screenWidth = LocalConfiguration.current.screenWidthDp
   val useRail = screenWidth >= 600
 
   val context = LocalContext.current
+  val activity = context.findActivity()
   LaunchedEffect(settings.gotifyUrl) {
     Notifications.createChannels(context)
     onRequestNotificationPermission()
@@ -160,7 +171,7 @@ fun HomeScreen(
           )
           NavigationBarItem(
             selected = false,
-            onClick = { session.logout() },
+            onClick = { showLogoutDialog = true },
             icon = { Icon(Icons.Filled.Logout, contentDescription = null) },
             label = { Text("Sair") },
           )
@@ -191,7 +202,7 @@ fun HomeScreen(
           )
           NavigationRailItem(
             selected = false,
-            onClick = { session.logout() },
+            onClick = { showLogoutDialog = true },
             icon = { Icon(Icons.Filled.Logout, contentDescription = null) },
             label = { Text("Sair") },
           )
@@ -209,7 +220,44 @@ fun HomeScreen(
   if (showExport) {
     ExportDialog(container = container, onDismiss = { showExport = false })
   }
+
+  if (showExitDialog) {
+    ExitDialog(
+      title = "Sair do aplicativo",
+      text = "Deseja fechar o app? Sua sessão será encerrada.",
+      confirmText = "Sair do app",
+      cancelText = "Cancelar",
+      onConfirm = {
+        showExitDialog = false
+        session.logout()
+        runCatching { activity?.finishAndRemoveTask() }
+          .onFailure { activity?.finish() }
+      },
+      onDismiss = { showExitDialog = false },
+    )
+  }
+
+  if (showLogoutDialog) {
+    ExitDialog(
+      title = "Sair da conta",
+      text = "Deseja sair da sua conta?",
+      confirmText = "Sair",
+      cancelText = "Cancelar",
+      onConfirm = {
+        showLogoutDialog = false
+        session.logout()
+      },
+      onDismiss = { showLogoutDialog = false },
+    )
+  }
 }
+
+private tailrec fun Context.findActivity(): Activity? =
+  when (this) {
+    is Activity -> this
+    is ContextWrapper -> baseContext.findActivity()
+    else -> null
+  }
 
 @Composable
 internal fun UserAvatar(initial: String, modifier: Modifier = Modifier) {
